@@ -37,12 +37,7 @@ export default function MonthSelector({ yearMonth, onChange }: Props) {
 
   return (
     <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, mb: 2 }}>
-      <Stack
-        direction="row"
-        spacing={1}
-        alignItems="center"
-        justifyContent="space-between"
-      >
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
         <IconButton aria-label="前の月" onClick={() => shiftMonth(-1)} size="small">
           <ArrowBackIosIcon fontSize="small" />
         </IconButton>
@@ -56,3 +51,4 @@ export default function MonthSelector({ yearMonth, onChange }: Props) {
     </Paper>
   );
 }
+

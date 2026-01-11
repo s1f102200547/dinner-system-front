@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import MonthSelector from "@/app/ATaxTable/MonthSelector";
+import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
