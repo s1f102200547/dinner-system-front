@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   CircularProgress,
@@ -9,7 +9,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useReservationData } from "@/app/hooks/useReservationData";
+import MonthSelector from "@/app/ATaxTable/MonthSelector";
+import { useReservationDataByMonth } from "@/app/hooks/useReservationDataByMonth";
 import type { ReservationRow } from "@/app/types/reservation";
 import { parseDate } from "@/app/utils/dateUtils";
 
@@ -38,7 +39,14 @@ const resolveDinnerTimeLabel = (row: ReservationRow) => {
 };
 
 const DinnerPage = () => {
-  const { rows, loading } = useReservationData();
+  const currentYearMonth = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  }, []);
+  const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
+  const { rows, loading } = useReservationDataByMonth(yearMonth);
 
   const dinnerRows = useMemo(
     () => rows.filter((row) => Number(row.dinner ?? 0) === 1),
@@ -61,6 +69,7 @@ const DinnerPage = () => {
 
   return (
     <Box sx={{ p: 2 }}>
+      <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
       {loading ? (
         <Stack alignItems="center" sx={{ py: 6 }}>
           <CircularProgress />
@@ -69,7 +78,9 @@ const DinnerPage = () => {
           </Typography>
         </Stack>
       ) : dinnerByDate.length === 0 ? (
-        <Typography color="text.secondary">dinner=1 の予約はありません。</Typography>
+        <Typography color="text.secondary">
+          dinner=1 の予約はありません。（{yearMonth || "全月"}）
+        </Typography>
       ) : (
         dinnerByDate.map(([dateKey, dayRows]) => (
           <Paper key={dateKey} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
