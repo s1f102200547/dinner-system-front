@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Box,
+  IconButton,
   Chip,
   CircularProgress,
   Paper,
@@ -10,6 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import MonthSelector from "@/app/ATaxTable/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
@@ -60,12 +62,15 @@ const DinnerPage = () => {
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
   const { rows, loading } = useDinnerDataByMonth(yearMonth);
 
+  const [createdItems, setCreatedItems] = useState<DinnerItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
 
-  const dinnerRows = useMemo(
-    () => rows.map((row) => ({ ...row, ...(overrides[row.id] ?? {}) })),
-    [rows, overrides],
-  );
+  const dinnerRows = useMemo(() => {
+    const visibleCreated = yearMonth
+      ? createdItems.filter((row) => row.dateKey.startsWith(`${yearMonth}-`))
+      : createdItems;
+    return [...rows, ...visibleCreated].map((row) => ({ ...row, ...(overrides[row.id] ?? {}) }));
+  }, [rows, createdItems, overrides, yearMonth]);
 
   const dinnerByDate = useMemo(() => {
     const grouped = new Map<string, DinnerItem[]>();
@@ -74,12 +79,41 @@ const DinnerPage = () => {
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(row);
     });
-    return [...grouped.entries()].sort(([a], [b]) => {
-      if (a === "日付未設定") return 1;
-      if (b === "日付未設定") return -1;
-      return parseDate(a).getTime() - parseDate(b).getTime();
-    });
+    return grouped;
   }, [dinnerRows]);
+
+  const allDateKeysInMonth = useMemo(() => {
+    if (!yearMonth) return [] as string[];
+    const [yearStr, monthStr] = yearMonth.split("-");
+    const year = Number(yearStr);
+    const month = Number(monthStr); // 1-12
+    if (!Number.isFinite(year) || !Number.isFinite(month)) return [] as string[];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = String(i + 1).padStart(2, "0");
+      return `${yearStr}-${monthStr}-${day}`;
+    });
+  }, [yearMonth]);
+
+  const addEmptyReservation = (dateKey: string) => {
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `local_${Date.now()}`;
+    const now = new Date();
+    const created: DinnerItem = {
+      id,
+      dateKey,
+      status: "coming",
+      dinner_customer_name: "name",
+      dinner_adult_count: 0,
+      dinner_child_count: 0,
+      dinner_time: null,
+      memo: "",
+      created_by: "dinner_front",
+      created_at: now,
+      updated_at: now,
+    };
+    setCreatedItems((prev) => [...prev, created]);
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -91,14 +125,28 @@ const DinnerPage = () => {
             予約を読み込み中です…
           </Typography>
         </Stack>
-      ) : dinnerByDate.length === 0 ? (
+      ) : yearMonth && allDateKeysInMonth.length === 0 ? (
+        <Typography color="text.secondary">表示月が不正です。</Typography>
+      ) : !yearMonth ? (
         <Typography color="text.secondary">
-          dinner=1 の予約はありません。（{yearMonth || "全月"}）
+          月未選択（全月表示）は未対応です。
         </Typography>
       ) : (
-        dinnerByDate.map(([dateKey, dayRows]) => (
+        allDateKeysInMonth.map((dateKey) => {
+          const dayRows = dinnerByDate.get(dateKey) ?? [];
+          const sorted = [...dayRows].sort((a, b) => {
+            const at = a.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
+            const bt = b.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
+            return at - bt;
+          });
+          return (
           <Paper key={dateKey} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-            <Typography variant="h6">{formatDayLabel(dateKey)}</Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+              <Typography variant="h6">{formatDayLabel(dateKey)}</Typography>
+              <IconButton aria-label="追加" onClick={() => addEmptyReservation(dateKey)} size="small">
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Stack>
             <Box
               sx={{
                 mt: 1.5,
@@ -108,7 +156,12 @@ const DinnerPage = () => {
                 alignItems: "stretch",
               }}
             >
-              {dayRows.map((row) => (
+              {sorted.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  予約なし
+                </Typography>
+              ) : null}
+              {sorted.map((row) => (
                 <Paper
                   key={row.id}
                   variant="outlined"
@@ -156,7 +209,8 @@ const DinnerPage = () => {
               ))}
             </Box>
           </Paper>
-        ))
+          );
+        })
       )}
     </Box>
   );
