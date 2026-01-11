@@ -10,8 +10,8 @@ import {
   Typography,
 } from "@mui/material";
 import MonthSelector from "@/app/ATaxTable/MonthSelector";
-import { useReservationDataByMonth } from "@/app/hooks/useReservationDataByMonth";
-import type { ReservationRow } from "@/app/types/reservation";
+import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
+import type { DinnerItem } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
 
 export default function Home() {
@@ -29,13 +29,12 @@ const formatDayLabel = (dateStr: string | null | undefined) => {
   return `${month}/${day} (${weekDay})`;
 };
 
-const resolveDinnerTimeLabel = (row: ReservationRow) => {
+const resolveDinnerTimeLabel = (row: DinnerItem) => {
   const value = row.dinner_time;
-  if (Array.isArray(value)) {
-    const first = value.find((v) => v !== null && v !== undefined && v !== "");
-    return first || "未定";
-  }
-  return value || "未定";
+  if (!value) return "未定";
+  const hour = String(value.getHours()).padStart(2, "0");
+  const minute = String(value.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
 };
 
 const DinnerPage = () => {
@@ -46,17 +45,14 @@ const DinnerPage = () => {
     return `${year}-${month}`;
   }, []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
-  const { rows, loading } = useReservationDataByMonth(yearMonth);
+  const { rows, loading } = useDinnerDataByMonth(yearMonth);
 
-  const dinnerRows = useMemo(
-    () => rows.filter((row) => Number(row.dinner ?? 0) === 1),
-    [rows],
-  );
+  const dinnerRows = rows;
 
   const dinnerByDate = useMemo(() => {
-    const grouped = new Map<string, ReservationRow[]>();
+    const grouped = new Map<string, DinnerItem[]>();
     dinnerRows.forEach((row) => {
-      const key = row.check_in_date || "日付未設定";
+      const key = row.dateKey || "日付未設定";
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(row);
     });
@@ -104,9 +100,9 @@ const DinnerPage = () => {
                     flex: { xs: "1 1 100%", sm: "0 0 20%" },
                   }}
                 >
-                  <Typography variant="subtitle2">{row.guest_name || "-"}</Typography>
+                  <Typography variant="subtitle2">{row.dinner_customer_name || "-"}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    adult: {row.adult_count ?? 0} / child: {row.child_count ?? 0}
+                    adult: {row.dinner_adult_count ?? 0} / child: {row.dinner_child_count ?? 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     dinner: {resolveDinnerTimeLabel(row)}
@@ -119,6 +115,7 @@ const DinnerPage = () => {
                     multiline
                     minRows={2}
                     sx={{ mt: 1 }}
+                    defaultValue={row.memo}
                   />
                 </Paper>
               ))}

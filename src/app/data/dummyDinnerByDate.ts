@@ -1,0 +1,199 @@
+// dummyDinnerByDate.ts
+import type { DinnerItem, DinnerStatus } from "@/app/types/dinner";
+
+/**
+ * dateKey(YYYY-MM-DD) と hh:mm から Date を生成
+ */
+const dt = (dateKey: string, hhmm: string) => {
+  const [yearStr, monthStr, dayStr] = dateKey.split("-");
+  const [hourStr, minuteStr] = hhmm.split(":");
+  return new Date(
+    Number(yearStr),
+    Number(monthStr) - 1,
+    Number(dayStr),
+    Number(hourStr),
+    Number(minuteStr),
+    0,
+    0
+  );
+};
+
+/**
+ * DinnerItem を簡潔に生成するヘルパー
+ */
+const item = (params: {
+  id: string;
+  dateKey: string;
+  status?: DinnerStatus;
+  name: string;
+  adult: number;
+  child: number;
+  time?: string | null;
+  memo?: string;
+}): DinnerItem => {
+  const now = new Date(2026, 0, 1, 12, 0, 0, 0);
+
+  return {
+    id: params.id,
+    dateKey: params.dateKey,
+    status: params.status ?? "coming",
+    dinner_customer_name: params.name,
+    dinner_adult_count: params.adult,
+    dinner_child_count: params.child,
+    dinner_time: params.time ? dt(params.dateKey, params.time) : null,
+    memo: params.memo ?? "",
+    created_by: "dinner_front",
+    created_at: now,
+    updated_at: now,
+  };
+};
+
+/**
+ * 日付 → (id → DinnerItem)
+ */
+export const dummyDinnerByDate: Record<
+  string,
+  Record<string, DinnerItem>
+> = {
+  /* ======================
+   * 2025-12（前月）
+   * ====================== */
+  "2025-12-28": {
+    auto_900: item({
+      id: "auto_900",
+      dateKey: "2025-12-28",
+      name: "年末 太郎",
+      adult: 2,
+      child: 0,
+      time: "18:00",
+    }),
+  },
+  "2025-12-30": {
+    auto_901: item({
+      id: "auto_901",
+      dateKey: "2025-12-30",
+      name: "Year End Guest",
+      adult: 1,
+      child: 1,
+      time: "19:00",
+    }),
+  },
+
+  /* ======================
+   * 2026-01（今月）
+   * ====================== */
+  "2026-01-10": {
+    auto_001: item({
+      id: "auto_001",
+      dateKey: "2026-01-10",
+      name: "山田 太郎",
+      adult: 2,
+      child: 0,
+      time: "18:30",
+    }),
+    auto_002: item({
+      id: "auto_002",
+      dateKey: "2026-01-10",
+      name: "John Smith",
+      adult: 1,
+      child: 1,
+      time: "19:00",
+    }),
+  },
+  "2026-01-11": {
+    auto_003: item({
+      id: "auto_003",
+      dateKey: "2026-01-11",
+      name: "Chen Wei",
+      adult: 2,
+      child: 0,
+      time: null, // 時間未確定
+    }),
+  },
+  "2026-01-12": {
+    auto_004: item({
+      id: "auto_004",
+      dateKey: "2026-01-12",
+      name: "鈴木 一郎",
+      adult: 1,
+      child: 0,
+      time: "18:00",
+    }),
+    auto_005: item({
+      id: "auto_005",
+      dateKey: "2026-01-12",
+      name: "Guest No Memo",
+      adult: 2,
+      child: 1,
+      time: "18:30",
+    }),
+  },
+  "2026-01-20": {
+    auto_006a: item({
+      id: "auto_006a",
+      dateKey: "2026-01-20",
+      name: "Late Jan Guest",
+      adult: 3,
+      child: 0,
+      time: "19:30",
+    }),
+  },
+
+  /* ======================
+   * 2026-02（翌月）
+   * ====================== */
+  "2026-02-01": {
+    auto_006: item({
+      id: "auto_006",
+      dateKey: "2026-02-01",
+      name: "Feb Guest",
+      adult: 1,
+      child: 0,
+      time: "19:00",
+    }),
+  },
+  "2026-02-05": {
+    auto_007: item({
+      id: "auto_007",
+      dateKey: "2026-02-05",
+      name: "Feb Family",
+      adult: 2,
+      child: 2,
+      time: "18:30",
+    }),
+  },
+  "2026-02-18": {
+    auto_008: item({
+      id: "auto_008",
+      dateKey: "2026-02-18",
+      name: "No Time Guest",
+      adult: 1,
+      child: 0,
+      time: null,
+    }),
+  },
+
+  /* ======================
+   * 2026-03（さらに翌月）
+   * ====================== */
+  "2026-03-03": {
+    auto_009: item({
+      id: "auto_009",
+      dateKey: "2026-03-03",
+      name: "March Guest",
+      adult: 2,
+      child: 0,
+      time: "18:00",
+    }),
+  },
+  "2026-03-15": {
+    auto_010: item({
+      id: "auto_010",
+      dateKey: "2026-03-15",
+      name: "Spring Family",
+      adult: 2,
+      child: 1,
+      time: "19:00",
+    }),
+  },
+};
