@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Box,
+  Chip,
   CircularProgress,
   Paper,
   Stack,
@@ -37,6 +38,18 @@ const resolveDinnerTimeLabel = (row: DinnerItem) => {
   return `${hour}:${minute}`;
 };
 
+type UiStatus = "coming" | "canceled";
+
+const STATUS_LABEL: Record<UiStatus, string> = {
+  coming: "coming",
+  canceled: "canceled",
+};
+
+const STATUS_COLOR: Record<UiStatus, "success" | "default"> = {
+  coming: "success",
+  canceled: "default",
+};
+
 const DinnerPage = () => {
   const currentYearMonth = useMemo(() => {
     const now = new Date();
@@ -47,7 +60,12 @@ const DinnerPage = () => {
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
   const { rows, loading } = useDinnerDataByMonth(yearMonth);
 
-  const dinnerRows = rows;
+  const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
+
+  const dinnerRows = useMemo(
+    () => rows.map((row) => ({ ...row, ...(overrides[row.id] ?? {}) })),
+    [rows, overrides],
+  );
 
   const dinnerByDate = useMemo(() => {
     const grouped = new Map<string, DinnerItem[]>();
@@ -100,7 +118,24 @@ const DinnerPage = () => {
                     flex: { xs: "1 1 100%", sm: "0 0 20%" },
                   }}
                 >
-                  <Typography variant="subtitle2">{row.dinner_customer_name || "-"}</Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                    <Typography variant="subtitle2" sx={{ minWidth: 0 }}>
+                      {row.dinner_customer_name || "-"}
+                    </Typography>
+                    <StatusChip
+                      status={row.status}
+                      onToggle={(nextStatus) => {
+                        setOverrides((prev) => ({
+                          ...prev,
+                          [row.id]: {
+                            ...(prev[row.id] ?? {}),
+                            status: nextStatus,
+                            updated_at: new Date(),
+                          },
+                        }));
+                      }}
+                    />
+                  </Stack>
                   <Typography variant="body2" color="text.secondary">
                     adult: {row.dinner_adult_count ?? 0} / child: {row.dinner_child_count ?? 0}
                   </Typography>
@@ -126,3 +161,24 @@ const DinnerPage = () => {
     </Box>
   );
 };
+
+function StatusChip({
+  status,
+  onToggle,
+}: {
+  status: DinnerItem["status"];
+  onToggle: (next: DinnerItem["status"]) => void;
+}) {
+  const uiStatus: UiStatus = status === "canceled" ? "canceled" : "coming";
+
+  return (
+    <Chip
+      label={STATUS_LABEL[uiStatus]}
+      color={STATUS_COLOR[uiStatus]}
+      size="small"
+      clickable
+      onClick={() => onToggle(uiStatus === "coming" ? "canceled" : "coming")}
+      sx={{ flexShrink: 0 }}
+    />
+  );
+}
