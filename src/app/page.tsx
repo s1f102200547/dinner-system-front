@@ -10,8 +10,10 @@ import {
   Stack,
   TextField,
   Typography,
+  Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
@@ -38,6 +40,26 @@ const resolveDinnerTimeLabel = (row: DinnerItem) => {
   const hour = String(value.getHours()).padStart(2, "0");
   const minute = String(value.getMinutes()).padStart(2, "0");
   return `${hour}:${minute}`;
+};
+
+const toTimeValue = (value: Date | null) => {
+  if (!value) return "";
+  const hour = String(value.getHours()).padStart(2, "0");
+  const minute = String(value.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
+};
+
+const toDateFromTime = (dateKey: string, hhmm: string) => {
+  if (!hhmm) return null;
+  const [yearStr, monthStr, dayStr] = dateKey.split("-");
+  const [hourStr, minuteStr] = hhmm.split(":");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (![year, month, day, hour, minute].every((v) => Number.isFinite(v))) return null;
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
 };
 
 type UiStatus = "coming" | "canceled";
@@ -75,6 +97,19 @@ const DinnerPage = () => {
 
   const [createdItems, setCreatedItems] = useState<DinnerItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
+
+  const updateRow = (id: string, patch: Partial<DinnerItem>) => {
+    setOverrides((prev) => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] ?? {}),
+        ...patch,
+        updated_at: new Date(),
+      },
+    }));
+  };
 
   const dinnerRows = useMemo(() => {
     const visibleCreated = yearMonth
@@ -123,6 +158,29 @@ const DinnerPage = () => {
       updated_at: now,
     };
     setCreatedItems((prev) => [...prev, created]);
+  };
+
+  const beginEdit = (row: DinnerItem) => {
+    setEditingId(row.id);
+    setEditingDraft({
+      dinner_customer_name: row.dinner_customer_name,
+      dinner_adult_count: row.dinner_adult_count,
+      dinner_child_count: row.dinner_child_count,
+      dinner_time: row.dinner_time,
+      memo: row.memo,
+      status: row.status,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingDraft(null);
+  };
+
+  const saveEdit = (rowId: string) => {
+    if (!editingDraft) return;
+    updateRow(rowId, editingDraft);
+    cancelEdit();
   };
 
   return (
@@ -185,36 +243,134 @@ const DinnerPage = () => {
                     <Typography variant="subtitle2" sx={{ minWidth: 0 }}>
                       {row.dinner_customer_name || "-"}
                     </Typography>
-                    <StatusChip
-                      status={row.status}
-                      onToggle={(nextStatus) => {
-                        setOverrides((prev) => ({
-                          ...prev,
-                          [row.id]: {
-                            ...(prev[row.id] ?? {}),
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <StatusChip
+                        status={(editingId === row.id ? editingDraft?.status : row.status) ?? row.status}
+                        onToggle={(nextStatus) =>
+                          setEditingDraft((prev) => ({
+                            ...(prev ?? {}),
                             status: nextStatus,
-                            updated_at: new Date(),
-                          },
-                        }));
-                      }}
-                    />
+                          }))
+                        }
+                        disabled={editingId !== row.id}
+                      />
+                      <IconButton
+                        aria-label="編集"
+                        size="small"
+                        onClick={() => beginEdit(row)}
+                        disabled={editingId !== null && editingId !== row.id}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">
-                    adult: {row.dinner_adult_count ?? 0} / child: {row.dinner_child_count ?? 0}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    dinner: {resolveDinnerTimeLabel(row)}
-                  </Typography>
-                  <TextField
-                    label="memo"
-                    placeholder="保存されません"
-                    size="small"
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    sx={{ mt: 1 }}
-                    defaultValue={row.memo}
-                  />
+                  {editingId === row.id ? (
+                    <>
+                      <TextField
+                        label="name"
+                        size="small"
+                        fullWidth
+                        value={editingDraft?.dinner_customer_name ?? ""}
+                        onChange={(e) =>
+                          setEditingDraft((prev) => ({
+                            ...(prev ?? {}),
+                            dinner_customer_name: e.target.value,
+                          }))
+                        }
+                        sx={{ mt: 1 }}
+                      />
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <TextField
+                          label="adult"
+                          type="number"
+                          size="small"
+                          value={editingDraft?.dinner_adult_count ?? 0}
+                          onChange={(e) => {
+                            const next = Number(e.target.value);
+                            setEditingDraft((prev) => ({
+                              ...(prev ?? {}),
+                              dinner_adult_count: Number.isFinite(next) ? next : 0,
+                            }));
+                          }}
+                          inputProps={{ min: 0, max: 99 }}
+                          sx={{ flex: 1 }}
+                        />
+                        <TextField
+                          label="child"
+                          type="number"
+                          size="small"
+                          value={editingDraft?.dinner_child_count ?? 0}
+                          onChange={(e) => {
+                            const next = Number(e.target.value);
+                            setEditingDraft((prev) => ({
+                              ...(prev ?? {}),
+                              dinner_child_count: Number.isFinite(next) ? next : 0,
+                            }));
+                          }}
+                          inputProps={{ min: 0, max: 99 }}
+                          sx={{ flex: 1 }}
+                        />
+                      </Stack>
+                    </>
+                  ) : (
+                    <>
+                      <Typography variant="body2" color="text.secondary">
+                        adult: {row.dinner_adult_count ?? 0} / child: {row.dinner_child_count ?? 0}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        dinner: {resolveDinnerTimeLabel(row)}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1, whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                      >
+                        memo: {row.memo || "-"}
+                      </Typography>
+                    </>
+                  )}
+                  {editingId === row.id ? (
+                    <>
+                      <TextField
+                        label="time"
+                        type="time"
+                        size="small"
+                        value={toTimeValue(editingDraft?.dinner_time ?? null)}
+                        onChange={(e) =>
+                          setEditingDraft((prev) => ({
+                            ...(prev ?? {}),
+                            dinner_time: toDateFromTime(row.dateKey, e.target.value),
+                          }))
+                        }
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ mt: 1 }}
+                      />
+                      <TextField
+                        label="memo"
+                        placeholder="保存されません"
+                        size="small"
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        sx={{ mt: 1 }}
+                        value={editingDraft?.memo ?? ""}
+                        onChange={(e) =>
+                          setEditingDraft((prev) => ({
+                            ...(prev ?? {}),
+                            memo: e.target.value,
+                          }))
+                        }
+                      />
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Button size="small" variant="outlined" onClick={cancelEdit}>
+                          キャンセル
+                        </Button>
+                        <Button size="small" variant="contained" onClick={() => saveEdit(row.id)}>
+                          保存
+                        </Button>
+                      </Stack>
+                    </>
+                  ) : null}
                 </Paper>
               ))}
             </Box>
@@ -229,9 +385,11 @@ const DinnerPage = () => {
 function StatusChip({
   status,
   onToggle,
+  disabled,
 }: {
   status: DinnerItem["status"];
   onToggle: (next: DinnerItem["status"]) => void;
+  disabled?: boolean;
 }) {
   const uiStatus: UiStatus = status === "canceled" ? "canceled" : "coming";
 
@@ -241,7 +399,11 @@ function StatusChip({
       color={STATUS_COLOR[uiStatus]}
       size="small"
       clickable
-      onClick={() => onToggle(uiStatus === "coming" ? "canceled" : "coming")}
+      onClick={() => {
+        if (disabled) return;
+        onToggle(uiStatus === "coming" ? "canceled" : "coming");
+      }}
+      disabled={disabled}
       sx={{ flexShrink: 0 }}
     />
   );
