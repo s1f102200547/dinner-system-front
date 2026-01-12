@@ -7,6 +7,8 @@ import {
   Chip,
   CircularProgress,
   Paper,
+  Select,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -244,16 +246,26 @@ const DinnerPage = () => {
                       {row.dinner_customer_name || "-"}
                     </Typography>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      <StatusChip
-                        status={(editingId === row.id ? editingDraft?.status : row.status) ?? row.status}
-                        onToggle={(nextStatus) =>
-                          setEditingDraft((prev) => ({
-                            ...(prev ?? {}),
-                            status: nextStatus,
-                          }))
-                        }
-                        disabled={editingId !== row.id}
-                      />
+                      {editingId === row.id ? (
+                        <Select
+                          size="small"
+                          value={editingDraft?.status ?? row.status}
+                          onChange={(e) =>
+                            setEditingDraft((prev) => ({
+                              ...(prev ?? {}),
+                              status: e.target.value as DinnerItem["status"],
+                            }))
+                          }
+                          sx={{ minWidth: 120 }}
+                        >
+                          <MenuItem value="coming">coming</MenuItem>
+                          <MenuItem value="canceled">canceled</MenuItem>
+                        </Select>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          {row.status}
+                        </Typography>
+                      )}
                       <IconButton
                         aria-label="編集"
                         size="small"
@@ -315,17 +327,17 @@ const DinnerPage = () => {
                   ) : (
                     <>
                       <Typography variant="body2" color="text.secondary">
-                        adult: {row.dinner_adult_count ?? 0} / child: {row.dinner_child_count ?? 0}
+                        adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        dinner: {resolveDinnerTimeLabel(row)}
+                        time: {resolveDinnerTimeLabel(row)}
                       </Typography>
                       <Typography
                         variant="body2"
                         color="text.secondary"
                         sx={{ mt: 1, whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                       >
-                        memo: {row.memo || "-"}
+                        {row.memo || "-"}
                       </Typography>
                     </>
                   )}
