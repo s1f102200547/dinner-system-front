@@ -13,7 +13,7 @@ import {
   FormControlLabel,
   Radio,
 } from "@mui/material";
-import { useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { dummyDinnerByDate } from "@/app/data/dummyDinnerByDate";
 
 const findReservationName = (reservationId: string | undefined) => {
@@ -29,7 +29,11 @@ const findReservationName = (reservationId: string | undefined) => {
 
 export default function GuestFormPage() {
   const searchParams = useSearchParams();
+  const params = useParams<{ formId?: string }>();
+  const router = useRouter();
   const reservationId = searchParams.get("reservationId") ?? undefined;
+  const token = searchParams.get("token") ?? "";
+  const formId = params?.formId ?? "1";
   const name = findReservationName(reservationId);
 
   return (
@@ -62,7 +66,7 @@ export default function GuestFormPage() {
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <FormControl component="fieldset">
             <FormLabel>希望の時間帯</FormLabel>
-            <RadioGroup defaultValue="17:30">
+            <RadioGroup>
               <FormControlLabel value="17:30" control={<Radio />} label="17:30〜" />
               <FormControlLabel value="19:30" control={<Radio />} label="19:30〜" />
             </RadioGroup>
@@ -72,7 +76,7 @@ export default function GuestFormPage() {
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <FormControl component="fieldset">
             <FormLabel>アレルギーの有無</FormLabel>
-            <RadioGroup defaultValue="no">
+            <RadioGroup>
               <FormControlLabel value="no" control={<Radio />} label="なし" />
               <FormControlLabel value="yes" control={<Radio />} label="あり" />
             </RadioGroup>
@@ -98,8 +102,18 @@ export default function GuestFormPage() {
         </Paper>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button variant="contained" size="large">
-            送信
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (reservationId) params.set("reservationId", reservationId);
+              if (token) params.set("token", token);
+              const query = params.toString();
+              router.push(`/form/${formId || "1"}/confirm${query ? `?${query}` : ""}`);
+            }}
+          >
+            確認
           </Button>
         </Box>
       </Stack>
