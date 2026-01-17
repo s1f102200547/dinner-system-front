@@ -1,5 +1,5 @@
 // dummyDinnerByDate.ts
-import type { DinnerItem, DinnerStatus } from "@/app/types/dinner";
+import type { DinnerByDate, DinnerItem, DinnerStatus } from "@/app/types/dinner";
 
 /**
  * dateKey(YYYY-MM-DD) と hh:mm から Date を生成
@@ -51,162 +51,205 @@ const item = (params: {
 /**
  * 日付 → (id → DinnerItem)
  */
-export const dummyDinnerByDate: Record<
-  string,
-  Record<string, DinnerItem>
-> = {
+export const dummyDinnerByDate: DinnerByDate = {
   /* ======================
    * 2025-12（前月）
    * ====================== */
   "2025-12-28": {
-    auto_900: item({
-      id: "auto_900",
-      dateKey: "2025-12-28",
-      status: "coming",
-      name: "年末 太郎",
-      adult: 2,
-      child: 0,
-      time: "18:00",
-    }),
+    shifts: [],
+    guests: {
+      auto_900: item({
+        id: "auto_900",
+        dateKey: "2025-12-28",
+        status: "coming",
+        name: "年末 太郎",
+        adult: 2,
+        child: 0,
+        time: "18:00",
+      }),
+    },
   },
   "2025-12-30": {
-    auto_901: item({
-      id: "auto_901",
-      dateKey: "2025-12-30",
-      status: "coming",
-      name: "Year End Guest",
-      adult: 1,
-      child: 1,
-      time: "19:00",
-    }),
+    shifts: [],
+    guests: {
+      auto_901: item({
+        id: "auto_901",
+        dateKey: "2025-12-30",
+        status: "coming",
+        name: "Year End Guest",
+        adult: 1,
+        child: 1,
+        time: "19:00",
+      }),
+    },
   },
 
   /* ======================
    * 2026-01（今月）
    * ====================== */
   "2026-01-10": {
-    auto_001: item({
-      id: "auto_001",
-      dateKey: "2026-01-10",
-      status: "coming",
-      name: "山田 太郎",
-      adult: 2,
-      child: 0,
-      time: "18:30",
-    }),
-    auto_002: item({
-      id: "auto_002",
-      dateKey: "2026-01-10",
-      status: "coming",
-      name: "John Smith",
-      adult: 1,
-      child: 1,
-      time: "19:00",
-    }),
+    shifts: [
+      {
+        staff_id: "yamada",
+        staff_name: "山田",
+        start_time: dt("2026-01-10", "17:00"),
+        end_time: dt("2026-01-10", "21:00"),
+      },
+      {
+        staff_id: "sato",
+        staff_name: "佐藤",
+        start_time: dt("2026-01-10", "17:00"),
+        end_time: dt("2026-01-10", "19:30"),
+      },
+    ],
+    guests: {
+      auto_001: item({
+        id: "auto_001",
+        dateKey: "2026-01-10",
+        status: "coming",
+        name: "山田 太郎",
+        adult: 2,
+        child: 0,
+        time: "18:30",
+      }),
+      auto_002: item({
+        id: "auto_002",
+        dateKey: "2026-01-10",
+        status: "coming",
+        name: "John Smith",
+        adult: 1,
+        child: 1,
+        time: "19:00",
+      }),
+    },
   },
   "2026-01-11": {
-    auto_003: item({
-      id: "auto_003",
-      dateKey: "2026-01-11",
-      status: "coming",
-      name: "Chen Wei",
-      adult: 2,
-      child: 0,
-      time: null, // 時間未確定
-    }),
+    shifts: [],
+    guests: {
+      auto_003: item({
+        id: "auto_003",
+        dateKey: "2026-01-11",
+        status: "coming",
+        name: "Chen Wei",
+        adult: 2,
+        child: 0,
+        time: null, // 時間未確定
+      }),
+    },
   },
   "2026-01-12": {
-    auto_004: item({
-      id: "auto_004",
-      dateKey: "2026-01-12",
-      status: "canceled",
-      name: "鈴木 一郎",
-      adult: 1,
-      child: 0,
-      time: "18:00",
-    }),
-    auto_005: item({
-      id: "auto_005",
-      dateKey: "2026-01-12",
-      status: "coming",
-      name: "Guest No Memo",
-      adult: 2,
-      child: 1,
-      time: "18:30",
-    }),
+    shifts: [],
+    guests: {
+      auto_004: item({
+        id: "auto_004",
+        dateKey: "2026-01-12",
+        status: "canceled",
+        name: "鈴木 一郎",
+        adult: 1,
+        child: 0,
+        time: "18:00",
+      }),
+      auto_005: item({
+        id: "auto_005",
+        dateKey: "2026-01-12",
+        status: "coming",
+        name: "Guest No Memo",
+        adult: 2,
+        child: 1,
+        time: "18:30",
+      }),
+    },
   },
   "2026-01-20": {
-    auto_006a: item({
-      id: "auto_006a",
-      dateKey: "2026-01-20",
-      status: "coming",
-      name: "Late Jan Guest",
-      adult: 3,
-      child: 0,
-      time: "19:30",
-    }),
+    shifts: [],
+    guests: {
+      auto_006a: item({
+        id: "auto_006a",
+        dateKey: "2026-01-20",
+        status: "coming",
+        name: "Late Jan Guest",
+        adult: 3,
+        child: 0,
+        time: "19:30",
+      }),
+    },
   },
 
   /* ======================
    * 2026-02（翌月）
    * ====================== */
   "2026-02-01": {
-    auto_006: item({
-      id: "auto_006",
-      dateKey: "2026-02-01",
-      status: "coming",
-      name: "Feb Guest",
-      adult: 1,
-      child: 0,
-      time: "19:00",
-    }),
+    shifts: [],
+    guests: {
+      auto_006: item({
+        id: "auto_006",
+        dateKey: "2026-02-01",
+        status: "coming",
+        name: "Feb Guest",
+        adult: 1,
+        child: 0,
+        time: "19:00",
+      }),
+    },
   },
   "2026-02-05": {
-    auto_007: item({
-      id: "auto_007",
-      dateKey: "2026-02-05",
-      status: "coming",
-      name: "Feb Family",
-      adult: 2,
-      child: 2,
-      time: "18:30",
-    }),
+    shifts: [],
+    guests: {
+      auto_007: item({
+        id: "auto_007",
+        dateKey: "2026-02-05",
+        status: "coming",
+        name: "Feb Family",
+        adult: 2,
+        child: 2,
+        time: "18:30",
+      }),
+    },
   },
   "2026-02-18": {
-    auto_008: item({
-      id: "auto_008",
-      dateKey: "2026-02-18",
-      status: "canceled",
-      name: "No Time Guest",
-      adult: 1,
-      child: 0,
-      time: null,
-    }),
+    shifts: [],
+    guests: {
+      auto_008: item({
+        id: "auto_008",
+        dateKey: "2026-02-18",
+        status: "canceled",
+        name: "No Time Guest",
+        adult: 1,
+        child: 0,
+        time: null,
+      }),
+    },
   },
 
   /* ======================
    * 2026-03（さらに翌月）
    * ====================== */
   "2026-03-03": {
-    auto_009: item({
-      id: "auto_009",
-      dateKey: "2026-03-03",
-      status: "coming",
-      name: "March Guest",
-      adult: 2,
-      child: 0,
-      time: "18:00",
-    }),
+    shifts: [],
+    guests: {
+      auto_009: item({
+        id: "auto_009",
+        dateKey: "2026-03-03",
+        status: "coming",
+        name: "March Guest",
+        adult: 2,
+        child: 0,
+        time: "18:00",
+      }),
+    },
   },
   "2026-03-15": {
-    auto_010: item({
-      id: "auto_010",
-      dateKey: "2026-03-15",
-      status: "coming",
-      name: "Spring Family",
-      adult: 2,
-      child: 1,
-      time: "19:00",
-    }),
+    shifts: [],
+    guests: {
+      auto_010: item({
+        id: "auto_010",
+        dateKey: "2026-03-15",
+        status: "coming",
+        name: "Spring Family",
+        adult: 2,
+        child: 1,
+        time: "19:00",
+      }),
+    },
   },
 };

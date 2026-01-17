@@ -2,19 +2,25 @@
 
 import { useMemo } from "react";
 import { dummyDinnerByDate } from "@/app/data/dummyDinnerByDate";
-import type { DinnerItem } from "@/app/types/dinner";
+import type { DinnerItem, DinnerShift } from "@/app/types/dinner";
 
-export function useDinnerDataByMonth(yearMonth: string): { rows: DinnerItem[]; loading: boolean } {
-  const rows = useMemo(() => {
+export function useDinnerDataByMonth(yearMonth: string): {
+  rows: DinnerItem[];
+  shiftsByDate: Record<string, DinnerShift[]>;
+  loading: boolean;
+} {
+  const { rows, shiftsByDate } = useMemo(() => {
     const dateKeys = Object.keys(dummyDinnerByDate);
     const filteredKeys = yearMonth
       ? dateKeys.filter((key) => key.startsWith(`${yearMonth}-`))
       : dateKeys;
 
     const flattened: DinnerItem[] = [];
+    const shiftMap: Record<string, DinnerShift[]> = {};
     filteredKeys.forEach((dateKey) => {
-      const byId = dummyDinnerByDate[dateKey];
-      Object.values(byId).forEach((row) => flattened.push(row));
+      const entry = dummyDinnerByDate[dateKey];
+      shiftMap[dateKey] = entry.shifts ?? [];
+      Object.values(entry.guests).forEach((row) => flattened.push(row));
     });
 
     flattened.sort((a, b) => {
@@ -24,9 +30,8 @@ export function useDinnerDataByMonth(yearMonth: string): { rows: DinnerItem[]; l
       return at - bt;
     });
 
-    return flattened;
+    return { rows: flattened, shiftsByDate: shiftMap };
   }, [yearMonth]);
 
-  return { rows, loading: false };
+  return { rows, shiftsByDate, loading: false };
 }
-

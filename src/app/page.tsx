@@ -18,7 +18,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
-import type { DinnerItem } from "@/app/types/dinner";
+import type { DinnerItem, DinnerShift } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
 
 export default function Home() {
@@ -36,12 +36,17 @@ const formatDayLabel = (dateStr: string | null | undefined) => {
   return `${month}/${day} (${weekDay})`;
 };
 
-const resolveDinnerTimeLabel = (row: DinnerItem) => {
-  const value = row.dinner_time;
+const toTimeLabel = (value: Date | null) => {
   if (!value) return "未定";
   const hour = String(value.getHours()).padStart(2, "0");
   const minute = String(value.getMinutes()).padStart(2, "0");
   return `${hour}:${minute}`;
+};
+
+const toShiftLabel = (shift: DinnerShift) => {
+  const start = toTimeLabel(shift.start_time);
+  const end = toTimeLabel(shift.end_time);
+  return `${shift.staff_name} ${start}~${end}`;
 };
 
 const toTimeValue = (value: Date | null) => {
@@ -95,7 +100,7 @@ const DinnerPage = () => {
     return `${year}-${month}`;
   }, []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
-  const { rows, loading } = useDinnerDataByMonth(yearMonth);
+  const { rows, shiftsByDate, loading } = useDinnerDataByMonth(yearMonth);
 
   const [createdItems, setCreatedItems] = useState<DinnerItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
@@ -209,10 +214,28 @@ const DinnerPage = () => {
             const bt = b.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
             return at - bt;
           });
+          const shifts = [...(shiftsByDate[dateKey] ?? [])].sort(
+            (a, b) => a.start_time.getTime() - b.start_time.getTime()
+          );
           return (
           <Paper key={dateKey} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-              <Typography variant="h6">{formatDayLabel(dateKey)}</Typography>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ flexWrap: "wrap", minWidth: 0 }}>
+                <Typography variant="h6">{formatDayLabel(dateKey)}</Typography>
+                {shifts.length > 0 ? (
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                    {shifts.map((shift) => (
+                      <Typography
+                        key={`${shift.staff_id}-${shift.start_time.toISOString()}`}
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        {toShiftLabel(shift)}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Stack>
               <IconButton aria-label="追加" onClick={() => addEmptyReservation(dateKey)} size="small">
                 <AddIcon fontSize="small" />
               </IconButton>
@@ -330,7 +353,7 @@ const DinnerPage = () => {
                         adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        time: {resolveDinnerTimeLabel(row)}
+                        time: {toTimeLabel(row.dinner_time)}
                       </Typography>
                       <Typography
                         variant="body2"
