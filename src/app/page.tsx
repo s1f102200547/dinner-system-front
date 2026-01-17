@@ -18,7 +18,7 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
-import type { DinnerItem, DinnerShift } from "@/app/types/dinner";
+import type { DinnerItem, StaffShift } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
 
 export default function Home() {
@@ -43,7 +43,7 @@ const toTimeLabel = (value: Date | null) => {
   return `${hour}:${minute}`;
 };
 
-const toShiftLabel = (shift: DinnerShift) => {
+const toShiftLabel = (shift: StaffShift) => {
   const start = toTimeLabel(shift.start_time);
   const end = toTimeLabel(shift.end_time);
   return `${shift.staff_name} ${start}~${end}`;

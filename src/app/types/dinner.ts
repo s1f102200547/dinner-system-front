@@ -16,16 +16,24 @@ export type DinnerItem = {
   updated_at: Date;
 };
 
-export type DinnerShift = {
-  staff_id: string;
-  staff_name: string;
+export type DinnerByDate = Record<string, Record<string, DinnerItem>>;
+
+export type ShiftBreak = {
   start_time: Date;
   end_time: Date;
 };
 
-export type DinnerByDateEntry = {
-  shifts: DinnerShift[];
-  guests: Record<string, DinnerItem>;
+export type StaffShift = {
+  id: string;
+  store_id: string;
+  dateKey: string;
+  staff_id: string;
+  staff_name: string;
+  start_time: Date;
+  end_time: Date;
+  breaks: ShiftBreak[];
+  created_at: Date;
+  updated_at: Date;
 };
 
-export type DinnerByDate = Record<string, DinnerByDateEntry>;
+export type StaffShiftByDate = Record<string, StaffShift[]>;

@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import { dummyDinnerByDate } from "@/app/data/dummyDinnerByDate";
-import type { DinnerItem, DinnerShift } from "@/app/types/dinner";
+import { dummyStaffShiftByDate } from "@/app/data/dummyStaffShiftByDate";
+import type { DinnerItem, StaffShift } from "@/app/types/dinner";
 
 export function useDinnerDataByMonth(yearMonth: string): {
   rows: DinnerItem[];
-  shiftsByDate: Record<string, DinnerShift[]>;
+  shiftsByDate: Record<string, StaffShift[]>;
   loading: boolean;
 } {
   const { rows, shiftsByDate } = useMemo(() => {
@@ -16,11 +17,11 @@ export function useDinnerDataByMonth(yearMonth: string): {
       : dateKeys;
 
     const flattened: DinnerItem[] = [];
-    const shiftMap: Record<string, DinnerShift[]> = {};
+    const shiftMap: Record<string, StaffShift[]> = {};
     filteredKeys.forEach((dateKey) => {
-      const entry = dummyDinnerByDate[dateKey];
-      shiftMap[dateKey] = entry.shifts ?? [];
-      Object.values(entry.guests).forEach((row) => flattened.push(row));
+      const byId = dummyDinnerByDate[dateKey];
+      shiftMap[dateKey] = dummyStaffShiftByDate[dateKey] ?? [];
+      Object.values(byId).forEach((row) => flattened.push(row));
     });
 
     flattened.sort((a, b) => {
