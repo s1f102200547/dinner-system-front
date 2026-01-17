@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   IconButton,
@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem, StaffShift } from "@/app/types/dinner";
@@ -83,6 +84,31 @@ const toDateFromTime = (dateKey: string, hhmm: string) => {
   return new Date(year, month - 1, day, hour, minute, 0, 0);
 };
 
+const compactSelectSx = {
+  minWidth: 120,
+  height: 32,
+  "& .MuiSelect-select": {
+    py: 0.5,
+    fontSize: 13,
+  },
+};
+
+const compactTextFieldSx = {
+  "& .MuiInputBase-root": {
+    height: 32,
+    fontSize: 13,
+  },
+  "& .MuiInputBase-input": {
+    py: 0.5,
+  },
+};
+
+const compactMultilineSx = {
+  "& .MuiInputBase-root": {
+    fontSize: 13,
+  },
+};
+
 type UiStatus = "coming" | "canceled";
 
 const STATUS_LABEL: Record<UiStatus, string> = {
@@ -113,6 +139,7 @@ const DinnerPage = () => {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     return `${year}-${month}`;
   }, []);
+  const menuOptions = useMemo(() => Object.values(dummyDinnerMenuById), []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
   const { rows, shiftsByDate, loading } = useDinnerDataByMonth(yearMonth);
 
@@ -120,6 +147,24 @@ const DinnerPage = () => {
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
+  const editingCardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!editingId) return;
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (editingCardRef.current?.contains(target)) return;
+      if (target instanceof Element) {
+        if (target.closest(".MuiPopover-root, .MuiModal-root, .MuiMenu-paper")) return;
+      }
+      cancelEdit();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [editingId]);
 
   const updateRow = (id: string, patch: Partial<DinnerItem>) => {
     setOverrides((prev) => ({
@@ -189,6 +234,7 @@ const DinnerPage = () => {
       dinner_adult_count: row.dinner_adult_count,
       dinner_child_count: row.dinner_child_count,
       dinner_time: row.dinner_time,
+      items: row.items ?? [],
       memo: row.memo,
       status: row.status,
     });
@@ -275,44 +321,32 @@ const DinnerPage = () => {
                   variant="outlined"
                   sx={{
                     p: 1.5,
-                    width: { xs: "100%", sm: "20%" },
-                    flex: { xs: "1 1 100%", sm: "0 0 20%" },
+                    width: { xs: "100%", sm: "24%" },
+                    flex: { xs: "1 1 100%", sm: "0 0 24%" },
                   }}
+                  ref={editingId === row.id ? editingCardRef : null}
                 >
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Typography variant="subtitle2" sx={{ minWidth: 0 }}>
-                      {row.dinner_customer_name || "-"}
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      {editingId === row.id ? (
-                        <Select
-                          size="small"
-                          value={editingDraft?.status ?? row.status}
-                          onChange={(e) =>
-                            setEditingDraft((prev) => ({
-                              ...(prev ?? {}),
-                              status: e.target.value as DinnerItem["status"],
-                            }))
-                          }
-                          sx={{ minWidth: 120 }}
-                        >
-                          <MenuItem value="coming">coming</MenuItem>
-                          <MenuItem value="canceled">canceled</MenuItem>
-                        </Select>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          {row.status}
+                    {editingId === row.id ? null : (
+                      <>
+                        <Typography variant="subtitle2" sx={{ minWidth: 0 }}>
+                          {row.dinner_customer_name || "-"}
                         </Typography>
-                      )}
-                      <IconButton
-                        aria-label="編集"
-                        size="small"
-                        onClick={() => beginEdit(row)}
-                        disabled={editingId !== null && editingId !== row.id}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Typography variant="body2" color="text.secondary">
+                            {row.status}
+                          </Typography>
+                          <IconButton
+                            aria-label="編集"
+                            size="small"
+                            onClick={() => beginEdit(row)}
+                            disabled={editingId !== null && editingId !== row.id}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </>
+                    )}
                   </Stack>
                   {editingId === row.id ? (
                     <>
@@ -327,8 +361,38 @@ const DinnerPage = () => {
                             dinner_customer_name: e.target.value,
                           }))
                         }
-                        sx={{ mt: 1 }}
+                        sx={{ mt: 1, ...compactTextFieldSx }}
                       />
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Select
+                          size="small"
+                          value={editingDraft?.status ?? row.status}
+                          onChange={(e) =>
+                            setEditingDraft((prev) => ({
+                              ...(prev ?? {}),
+                              status: e.target.value as DinnerItem["status"],
+                            }))
+                          }
+                          sx={compactSelectSx}
+                        >
+                          <MenuItem value="coming">coming</MenuItem>
+                          <MenuItem value="canceled">canceled</MenuItem>
+                        </Select>
+                        <TextField
+                          label="time"
+                          type="time"
+                          size="small"
+                          value={toTimeValue(editingDraft?.dinner_time ?? null)}
+                          onChange={(e) =>
+                            setEditingDraft((prev) => ({
+                              ...(prev ?? {}),
+                              dinner_time: toDateFromTime(row.dateKey, e.target.value),
+                            }))
+                          }
+                          InputLabelProps={{ shrink: true }}
+                          sx={{ flex: 1, ...compactTextFieldSx }}
+                        />
+                      </Stack>
                       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                         <TextField
                           label="adult"
@@ -343,7 +407,7 @@ const DinnerPage = () => {
                             }));
                           }}
                           inputProps={{ min: 0, max: 99 }}
-                          sx={{ flex: 1 }}
+                          sx={{ flex: 1, ...compactTextFieldSx }}
                         />
                         <TextField
                           label="child"
@@ -358,7 +422,7 @@ const DinnerPage = () => {
                             }));
                           }}
                           inputProps={{ min: 0, max: 99 }}
-                          sx={{ flex: 1 }}
+                          sx={{ flex: 1, ...compactTextFieldSx }}
                         />
                       </Stack>
                     </>
@@ -384,20 +448,102 @@ const DinnerPage = () => {
                   )}
                   {editingId === row.id ? (
                     <>
-                      <TextField
-                        label="time"
-                        type="time"
-                        size="small"
-                        value={toTimeValue(editingDraft?.dinner_time ?? null)}
-                        onChange={(e) =>
-                          setEditingDraft((prev) => ({
-                            ...(prev ?? {}),
-                            dinner_time: toDateFromTime(row.dateKey, e.target.value),
-                          }))
-                        }
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ mt: 1 }}
-                      />
+                      <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          items
+                        </Typography>
+                        <IconButton
+                          aria-label="追加"
+                          size="small"
+                          onClick={() => {
+                            setEditingDraft((prev) => {
+                              const currentItems = prev?.items ?? row.items ?? [];
+                              return {
+                                ...(prev ?? {}),
+                                items: [...currentItems, { item_id: "", quantity: 0 }],
+                              };
+                            });
+                          }}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                      <Stack spacing={0.5} sx={{ mt: 1 }}>
+                        {(editingDraft?.items ?? row.items ?? []).map((item, index) => {
+                          return (
+                            <Stack
+                              key={`${item.item_id || "empty"}-${index}`}
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                            >
+                              <Select
+                                size="small"
+                                value={item.item_id}
+                                onChange={(e) => {
+                                  const nextId = e.target.value;
+                                  setEditingDraft((prev) => {
+                                    const currentItems = prev?.items ?? row.items ?? [];
+                                    const updated = currentItems.map((current, idx) =>
+                                      idx === index ? { ...current, item_id: nextId } : current
+                                    );
+                                    if (!nextId) return { ...(prev ?? {}), items: updated };
+                                    const firstIndex = updated.findIndex(
+                                      (current, idx) => current.item_id === nextId && idx !== index
+                                    );
+                                    if (firstIndex >= 0) {
+                                      updated[firstIndex].quantity += updated[index].quantity;
+                                      updated.splice(index, 1);
+                                    }
+                                    return { ...(prev ?? {}), items: updated };
+                                  });
+                                }}
+                                sx={compactSelectSx}
+                              >
+                                <MenuItem value="">-</MenuItem>
+                                {menuOptions.map((menu) => (
+                                  <MenuItem key={menu.item_id} value={menu.item_id}>
+                                    {menu.item_name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                              <TextField
+                                label="qty"
+                                type="number"
+                                size="small"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const next = Number(e.target.value);
+                                  const quantity = Number.isFinite(next) && next >= 0 ? next : 0;
+                                  setEditingDraft((prev) => {
+                                    const currentItems = prev?.items ?? row.items ?? [];
+                                    const updated = currentItems.map((current, idx) =>
+                                      idx === index ? { ...current, quantity } : current
+                                    );
+                                    return { ...(prev ?? {}), items: updated };
+                                  });
+                                }}
+                                inputProps={{ min: 0, max: 99 }}
+                                sx={{ width: 90, ...compactTextFieldSx }}
+                              />
+                              <IconButton
+                                aria-label="削除"
+                                size="small"
+                                sx={{ width: 24, height: 24 }}
+                                onClick={() => {
+                                  setEditingDraft((prev) => {
+                                    const currentItems = prev?.items ?? row.items ?? [];
+                                    const updated = currentItems.filter((_, idx) => idx !== index);
+                                    return { ...(prev ?? {}), items: updated };
+                                  });
+                                }}
+                              >
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Stack>
+                          );
+                        })}
+                      </Stack>
                       <TextField
                         label="memo"
                         placeholder="保存されません"
@@ -405,7 +551,7 @@ const DinnerPage = () => {
                         fullWidth
                         multiline
                         minRows={2}
-                        sx={{ mt: 1 }}
+                        sx={{ mt: 1, ...compactMultilineSx }}
                         value={editingDraft?.memo ?? ""}
                         onChange={(e) =>
                           setEditingDraft((prev) => ({
@@ -414,10 +560,7 @@ const DinnerPage = () => {
                           }))
                         }
                       />
-                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                        <Button size="small" variant="outlined" onClick={cancelEdit}>
-                          キャンセル
-                        </Button>
+                      <Stack direction="row" spacing={1} sx={{ mt: 1, justifyContent: "flex-end" }}>
                         <Button size="small" variant="contained" onClick={() => saveEdit(row.id)}>
                           保存
                         </Button>
