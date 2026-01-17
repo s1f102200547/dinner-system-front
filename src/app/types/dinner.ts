@@ -2,6 +2,11 @@ export type DinnerStatus = "coming" | "canceled";
 
 export type DinnerCreatedBy = "gmail-listener_back" | "dinner_front";
 
+export type DinnerOrderItem = {
+  item_id: string;
+  quantity: number;
+};
+
 export type DinnerItem = {
   id: string; // firebase auto id (doc id)
   dateKey: string; // yyyy-mm-dd
@@ -10,6 +15,7 @@ export type DinnerItem = {
   dinner_adult_count: number;
   dinner_child_count: number;
   dinner_time: Date | null;
+  items?: DinnerOrderItem[];
   memo: string;
   created_by: DinnerCreatedBy;
   created_at: Date;
@@ -17,6 +23,14 @@ export type DinnerItem = {
 };
 
 export type DinnerByDate = Record<string, Record<string, DinnerItem>>;
+
+export type DinnerMenuItem = {
+  item_id: string;
+  item_name: string;
+  price: number;
+};
+
+export type DinnerMenuById = Record<string, DinnerMenuItem>;
 
 export type ShiftBreak = {
   start_time: Date;

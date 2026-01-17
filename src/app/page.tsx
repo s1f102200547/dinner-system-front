@@ -20,6 +20,7 @@ import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem, StaffShift } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
+import { dummyDinnerMenuById } from "@/app/data/dummyDinnerMenuById";
 
 export default function Home() {
   return <DinnerPage />;
@@ -41,6 +42,19 @@ const toTimeLabel = (value: Date | null) => {
   const hour = String(value.getHours()).padStart(2, "0");
   const minute = String(value.getMinutes()).padStart(2, "0");
   return `${hour}:${minute}`;
+};
+
+const toItemsLabel = (
+  items: DinnerItem["items"] | undefined,
+  menuById: typeof dummyDinnerMenuById
+) => {
+  if (!items || items.length === 0) return "-";
+  return items
+    .map((item) => {
+      const name = menuById[item.item_id]?.item_name ?? item.item_id;
+      return `${name} x${item.quantity}`;
+    })
+    .join(", ");
 };
 
 const toShiftLabel = (shift: StaffShift) => {
@@ -159,6 +173,7 @@ const DinnerPage = () => {
       dinner_adult_count: 0,
       dinner_child_count: 0,
       dinner_time: null,
+      items: [],
       memo: "",
       created_by: "dinner_front",
       created_at: now,
@@ -354,6 +369,9 @@ const DinnerPage = () => {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         time: {toTimeLabel(row.dinner_time)}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        items: {toItemsLabel(row.items, dummyDinnerMenuById)}
                       </Typography>
                       <Typography
                         variant="body2"

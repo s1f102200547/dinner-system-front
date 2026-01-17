@@ -29,6 +29,7 @@ const item = (params: {
   adult: number;
   child: number;
   time?: string | null;
+  items?: DinnerItem["items"];
   memo?: string;
 }): DinnerItem => {
   const now = new Date(2026, 0, 1, 12, 0, 0, 0);
@@ -41,6 +42,7 @@ const item = (params: {
     dinner_adult_count: params.adult,
     dinner_child_count: params.child,
     dinner_time: params.time ? dt(params.dateKey, params.time) : null,
+    items: params.items,
     memo: params.memo ?? "",
     created_by: "dinner_front",
     created_at: now,
@@ -90,6 +92,10 @@ export const dummyDinnerByDate: DinnerByDate = {
       adult: 2,
       child: 0,
       time: "18:30",
+      items: [
+        { item_id: "wagyu_course", quantity: 1 },
+        { item_id: "sake_pairing", quantity: 2 },
+      ],
     }),
     auto_002: item({
       id: "auto_002",
@@ -99,6 +105,7 @@ export const dummyDinnerByDate: DinnerByDate = {
       adult: 1,
       child: 1,
       time: "19:00",
+      items: [{ item_id: "kids_course", quantity: 1 }],
     }),
   },
   "2026-01-11": {
@@ -130,6 +137,7 @@ export const dummyDinnerByDate: DinnerByDate = {
       adult: 2,
       child: 1,
       time: "18:30",
+      items: [{ item_id: "wagyu_course", quantity: 2 }],
     }),
   },
   "2026-01-20": {
@@ -141,6 +149,7 @@ export const dummyDinnerByDate: DinnerByDate = {
       adult: 3,
       child: 0,
       time: "19:30",
+      items: [{ item_id: "veg_course", quantity: 1 }],
     }),
   },
 
