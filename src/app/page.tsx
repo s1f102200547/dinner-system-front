@@ -13,10 +13,13 @@ import {
   TextField,
   Typography,
   Button,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddLinkIcon from "@mui/icons-material/AddLink";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem, StaffShift } from "@/app/types/dinner";
@@ -132,6 +135,14 @@ const createLocalId = () => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
+const createToken = () => {
+  const cryptoObj = globalThis.crypto;
+  if (cryptoObj?.randomUUID) return cryptoObj.randomUUID().replace(/-/g, "");
+  const bytes = new Uint8Array(16);
+  cryptoObj?.getRandomValues?.(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+};
+
 const DinnerPage = () => {
   const currentYearMonth = useMemo(() => {
     const now = new Date();
@@ -147,6 +158,7 @@ const DinnerPage = () => {
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const editingCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -251,6 +263,26 @@ const DinnerPage = () => {
     cancelEdit();
   };
 
+  const copyGuestLink = async (row: DinnerItem) => {
+    const formId = "1";
+    const token = createToken();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+    const url = `${baseUrl}/form/${formId}?reservationId=${row.id}&token=${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setSnackbarOpen(true);
+  };
+
   return (
     <Box sx={{ p: 2 }}>
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
@@ -333,6 +365,14 @@ const DinnerPage = () => {
                           {row.dinner_customer_name || "-"}
                         </Typography>
                         <Stack direction="row" spacing={0.5} alignItems="center">
+                          <IconButton
+                            aria-label="リンク生成"
+                            size="small"
+                            onClick={() => void copyGuestLink(row)}
+                            disabled={editingId !== null}
+                          >
+                            <AddLinkIcon fontSize="small" />
+                          </IconButton>
                           <Typography variant="body2" color="text.secondary">
                             {row.status}
                           </Typography>
@@ -574,6 +614,16 @@ const DinnerPage = () => {
           );
         })
       )}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2500}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity="success" onClose={() => setSnackbarOpen(false)}>
+          ゲスト用リンクをコピーしました
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
