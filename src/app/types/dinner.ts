@@ -1,4 +1,4 @@
-export type DinnerStatus = "coming" | "canceled";
+export type DinnerStatus = "coming" | "canceled" | "done";
 
 export type DinnerCreatedBy = "gmail-listener_back" | "dinner_front";
 

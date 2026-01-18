@@ -68,7 +68,6 @@ export default function AnalysisPage() {
               <TableCell>人数</TableCell>
               <TableCell>キャンセル組</TableCell>
               <TableCell>キャンセル人数</TableCell>
-              <TableCell>メモ</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -80,12 +79,11 @@ export default function AnalysisPage() {
                 <TableCell>{row.total_guests}</TableCell>
                 <TableCell>{row.canceled_groups}</TableCell>
                 <TableCell>{row.canceled_guests}</TableCell>
-                <TableCell>{row.memo ?? "-"}</TableCell>
               </TableRow>
             ))}
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={6}>
                   <Typography variant="body2" color="text.secondary">
                     データがありません。
                   </Typography>
@@ -110,9 +108,6 @@ export default function AnalysisPage() {
                 </TableCell>
                 <TableCell>
                   <Typography variant="subtitle2">{totals.canceled_guests}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="subtitle2">-</Typography>
                 </TableCell>
               </TableRow>
             )}

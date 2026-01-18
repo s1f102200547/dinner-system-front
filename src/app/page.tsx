@@ -24,7 +24,10 @@ import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem, StaffShift } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
+import { dummyDinnerByDate } from "@/app/data/dummyDinnerByDate";
 import { dummyDinnerMenuById } from "@/app/data/dummyDinnerMenuById";
+import { dummyDinnerDailySummaryByDate } from "@/app/data/dummyDinnerDailySummaryByDate";
+import type { DinnerDailySummary } from "@/app/types/dinnerDailySummary";
 
 export default function Home() {
   return <DinnerPage />;
@@ -112,16 +115,18 @@ const compactMultilineSx = {
   },
 };
 
-type UiStatus = "coming" | "canceled";
+type UiStatus = "coming" | "canceled" | "done";
 
 const STATUS_LABEL: Record<UiStatus, string> = {
   coming: "coming",
   canceled: "canceled",
+  done: "done",
 };
 
-const STATUS_COLOR: Record<UiStatus, "success" | "default"> = {
+const STATUS_COLOR: Record<UiStatus, "success" | "default" | "info"> = {
   coming: "success",
   canceled: "default",
+  done: "info",
 };
 
 const createLocalId = () => {
@@ -159,6 +164,9 @@ const DinnerPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [dailySummaryByDate, setDailySummaryByDate] = useState<
+    Record<string, DinnerDailySummary>
+  >(dummyDinnerDailySummaryByDate);
   const editingCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -310,6 +318,7 @@ const DinnerPage = () => {
           const shifts = [...(shiftsByDate[dateKey] ?? [])].sort(
             (a, b) => a.start_time.getTime() - b.start_time.getTime()
           );
+          const isConfirmed = Boolean(dailySummaryByDate[dateKey]);
           return (
           <Paper key={dateKey} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
@@ -329,9 +338,71 @@ const DinnerPage = () => {
                   </Stack>
                 ) : null}
               </Stack>
-              <IconButton aria-label="追加" onClick={() => addEmptyReservation(dateKey)} size="small">
-                <AddIcon fontSize="small" />
-              </IconButton>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  size="small"
+                  variant={isConfirmed ? "outlined" : "contained"}
+                  onClick={() => {
+                    if (!isConfirmed) {
+                      const ok = window.confirm("この日付を確定しますか？");
+                      if (!ok) return;
+                    }
+                    setDailySummaryByDate((prev) => {
+                      const next = { ...prev };
+                      if (isConfirmed) {
+                        delete next[dateKey];
+                        return next;
+                      }
+                      const byId = dummyDinnerByDate[dateKey];
+                      if (!byId) return next;
+                      let total_sales = 0;
+                      let total_groups = 0;
+                      let total_guests = 0;
+                      let canceled_groups = 0;
+                      let canceled_guests = 0;
+                      Object.values(byId).forEach((row) => {
+                        const isCanceled = row.status === "canceled";
+                        const guestCount =
+                          (row.dinner_adult_count ?? 0) + (row.dinner_child_count ?? 0);
+                        if (isCanceled) {
+                          canceled_groups += 1;
+                          canceled_guests += guestCount;
+                          return;
+                        }
+                        total_groups += 1;
+                        total_guests += guestCount;
+                        if (row.status === "done") {
+                          (row.items ?? []).forEach((item) => {
+                            const price = dummyDinnerMenuById[item.item_id]?.price ?? 0;
+                            total_sales += price * item.quantity;
+                          });
+                        }
+                      });
+                      next[dateKey] = {
+                        store_id: "asakusa_001",
+                        dateKey,
+                        total_sales,
+                        total_groups,
+                        total_guests,
+                        canceled_groups,
+                        canceled_guests,
+                      };
+                      return next;
+                    });
+                    if (!isConfirmed) cancelEdit();
+                  }}
+                >
+                  {isConfirmed ? "解除" : "確定"}
+                </Button>
+                <IconButton
+                  aria-label="追加"
+                  onClick={() => addEmptyReservation(dateKey)}
+                  size="small"
+                  disabled={isConfirmed}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             </Stack>
             <Box
               sx={{
@@ -369,7 +440,7 @@ const DinnerPage = () => {
                             aria-label="リンク生成"
                             size="small"
                             onClick={() => void copyGuestLink(row)}
-                            disabled={editingId !== null}
+                            disabled={editingId !== null || isConfirmed}
                           >
                             <AddLinkIcon fontSize="small" />
                           </IconButton>
@@ -380,7 +451,7 @@ const DinnerPage = () => {
                             aria-label="編集"
                             size="small"
                             onClick={() => beginEdit(row)}
-                            disabled={editingId !== null && editingId !== row.id}
+                            disabled={isConfirmed || (editingId !== null && editingId !== row.id)}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -417,6 +488,7 @@ const DinnerPage = () => {
                         >
                           <MenuItem value="coming">coming</MenuItem>
                           <MenuItem value="canceled">canceled</MenuItem>
+                          <MenuItem value="done">done</MenuItem>
                         </Select>
                         <TextField
                           label="time"
