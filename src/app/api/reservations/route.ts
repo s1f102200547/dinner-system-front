@@ -27,6 +27,7 @@ type ApiReservationRow = {
 
 const YEAR_MONTH_PATTERN = /^\d{4}-\d{2}$/;
 const HHMM_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const FETCH_LIMIT = 300;
 
 const parseSlashDate = (value: string) => {
   const [yearStr, monthStr, dayStr] = value.split("/");
@@ -50,6 +51,12 @@ const toDateKey = (date: Date) => {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const toSlashDate = (year: number, month: number, day: number) => {
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}/${mm}/${dd}`;
 };
 
 const toIsoDateTime = (date: Date, hhmm: string) => {
@@ -85,9 +92,23 @@ export async function GET(request: Request) {
     );
   }
 
+  const [yearStr, monthStr] = yearMonth.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const monthStartSlash = toSlashDate(year, month, 1);
+  const monthEndSlash = toSlashDate(year, month, daysInMonth);
+
   try {
     const db = getAdminDb();
-    const snapshot = await db.collection("guestInfoV2").get();
+    const snapshot = await db
+      .collection("guestInfoV2")
+      .where("dinner", "==", 1)
+      .where("check_in_date", "<=", monthEndSlash)
+      .where("check_out_date", ">", monthStartSlash)
+      .orderBy("check_in_date", "asc")
+      .limit(FETCH_LIMIT)
+      .get();
 
     const rows: ApiReservationRow[] = [];
     const errors: string[] = [];
@@ -185,7 +206,9 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         rows: [],
-        errors: [`Failed to fetch guestInfoV2 from Firestore: ${message}`],
+        errors: [
+          `Failed to fetch guestInfoV2 from Firestore: ${message} (index 作成が必要な可能性があります)`,
+        ],
       },
       { status: 500 }
     );
