@@ -123,7 +123,7 @@ export const dummyDinnerByDate: DinnerByDate = {
     auto_004: item({
       id: "auto_004",
       dateKey: "2026-01-12",
-      status: "canceled",
+      status: "coming",
       name: "鈴木 一郎",
       adult: 1,
       child: 0,
@@ -182,7 +182,7 @@ export const dummyDinnerByDate: DinnerByDate = {
     auto_008: item({
       id: "auto_008",
       dateKey: "2026-02-18",
-      status: "canceled",
+      status: "coming",
       name: "No Time Guest",
       adult: 1,
       child: 0,
