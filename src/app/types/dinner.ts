@@ -23,11 +23,3 @@ export type DinnerItem = {
 };
 
 export type DinnerByDate = Record<string, Record<string, DinnerItem>>;
-
-export type DinnerMenuItem = {
-  item_id: string;
-  item_name: string;
-  price: number;
-};
-
-export type DinnerMenuById = Record<string, DinnerMenuItem>;
