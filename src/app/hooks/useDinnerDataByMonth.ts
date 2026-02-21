@@ -7,12 +7,12 @@ type ApiReservationRow = {
   id: string;
   reservation_number: string;
   origin: "ryokan-system-front";
+  is_canceled: boolean;
   dateKey: string;
-  status: "coming";
   dinner_customer_name: string;
   dinner_adult_count: number;
   dinner_child_count: number;
-  dinner_time: string;
+  dinner_time: string | null;
   memo: string;
 };
 
@@ -22,14 +22,14 @@ type ApiResponse = {
 };
 
 const mapApiRowToDinnerItem = (row: ApiReservationRow): DinnerItem | null => {
-  const dinnerTime = new Date(row.dinner_time);
-  if (Number.isNaN(dinnerTime.getTime())) return null;
+  const dinnerTime = row.dinner_time === null ? null : new Date(row.dinner_time);
+  if (dinnerTime && Number.isNaN(dinnerTime.getTime())) return null;
 
   return {
     id: row.id,
     origin: row.origin,
     dateKey: row.dateKey,
-    status: row.status,
+    status: row.is_canceled ? "canceled" : "coming",
     dinner_customer_name: row.dinner_customer_name,
     dinner_adult_count: row.dinner_adult_count,
     dinner_child_count: row.dinner_child_count,
