@@ -60,6 +60,15 @@ const toIsoDateTime = (date: Date, hhmm: string) => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute, 0, 0).toISOString();
 };
 
+const getErrorLabel = (raw: GuestInfoV2ReservationRaw, dateText?: string) => {
+  const name = typeof raw.guest_name === "string" && raw.guest_name.trim().length > 0
+    ? raw.guest_name
+    : "名前不明";
+  const date = dateText
+    ?? (typeof raw.check_in_date === "string" ? raw.check_in_date : "日付不明");
+  return `${date} / ${name}`;
+};
+
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
@@ -84,39 +93,38 @@ export async function GET(request: Request) {
     const errors: string[] = [];
 
     snapshot.forEach((doc) => {
-      const reservationNumber = doc.id;
       const raw = doc.data() as GuestInfoV2ReservationRaw;
 
       if (raw.dinner !== 1) return;
       if (raw.cancel === 1) return;
 
       if (typeof raw.check_in_date !== "string" || typeof raw.check_out_date !== "string") {
-        errors.push(`予約 ${reservationNumber}: check_in_date/check_out_date が不正なため除外しました。`);
+        errors.push(`${getErrorLabel(raw)}: check_in_date/check_out_date が不正なため除外しました。`);
         return;
       }
 
       const checkIn = parseSlashDate(raw.check_in_date);
       const checkOut = parseSlashDate(raw.check_out_date);
       if (!checkIn || !checkOut || checkOut <= checkIn) {
-        errors.push(`予約 ${reservationNumber}: 宿泊日が不正なため除外しました。`);
+        errors.push(`${getErrorLabel(raw)}: 宿泊日が不正なため除外しました。`);
         return;
       }
 
       if (!Array.isArray(raw.dinner_time)) {
-        errors.push(`予約 ${reservationNumber}: dinner_time が配列でないため除外しました。`);
+        errors.push(`${getErrorLabel(raw)}: dinner_time が配列でないため除外しました。`);
         return;
       }
 
       const nights = Math.floor((checkOut.getTime() - checkIn.getTime()) / (24 * 60 * 60 * 1000));
       if (raw.dinner_time.length !== nights) {
         errors.push(
-          `予約 ${reservationNumber}: dinner_time の件数(${raw.dinner_time.length})と泊数(${nights})が不一致のため除外しました。`
+          `${getErrorLabel(raw)}: dinner_time の件数(${raw.dinner_time.length})と泊数(${nights})が不一致のため除外しました。`
         );
         return;
       }
 
       if (typeof raw.guest_name !== "string") {
-        errors.push(`予約 ${reservationNumber}: guest_name が不正なため除外しました。`);
+        errors.push(`${getErrorLabel(raw)}: guest_name が不正なため除外しました。`);
         return;
       }
 
@@ -130,7 +138,7 @@ export async function GET(request: Request) {
         raw.adult_count > 9 ||
         raw.child_count > 9
       ) {
-        errors.push(`予約 ${reservationNumber}: adult_count/child_count が不正なため除外しました。`);
+        errors.push(`${getErrorLabel(raw)}: adult_count/child_count が不正なため除外しました。`);
         return;
       }
 
@@ -143,7 +151,7 @@ export async function GET(request: Request) {
         const timeValue = raw.dinner_time[i];
         if (timeValue === null) continue;
         if (typeof timeValue !== "string" || !HHMM_PATTERN.test(timeValue)) {
-          errors.push(`予約 ${reservationNumber}: dinner_time[${i}] が不正なため当日分を除外しました。`);
+          errors.push(`${getErrorLabel(raw, dateKey)}: dinner_time[${i}] が不正なため当日分を除外しました。`);
           continue;
         }
 
@@ -151,8 +159,8 @@ export async function GET(request: Request) {
         if (!dinnerTime) continue;
 
         rows.push({
-          id: `${reservationNumber}_${dateKey}`,
-          reservation_number: reservationNumber,
+          id: `${doc.id}_${dateKey}`,
+          reservation_number: doc.id,
           origin: "ryokan-system-front",
           dateKey,
           status: "coming",

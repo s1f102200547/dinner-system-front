@@ -213,8 +213,8 @@ const DinnerPage = () => {
     <Box sx={{ p: 2 }}>
       {errors.length > 0 ? (
         <Stack spacing={1} sx={{ mb: 2 }}>
-          {errors.map((message) => (
-            <Alert key={message} severity="error">
+          {errors.map((message, index) => (
+            <Alert key={`${message}-${index}`} severity="error">
               {message}
             </Alert>
           ))}
