@@ -216,7 +216,9 @@ const DinnerPage = () => {
         <Stack spacing={1} sx={{ mb: 2 }}>
           {errors.map((message, index) => (
             <Alert key={`${message}-${index}`} severity="error">
-              {message}
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {message}
+              </Typography>
             </Alert>
           ))}
         </Stack>
