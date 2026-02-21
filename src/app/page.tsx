@@ -6,8 +6,6 @@ import {
   IconButton,
   CircularProgress,
   Paper,
-  Select,
-  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -15,12 +13,10 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
-import { dummyDinnerMenuById } from "@/app/data/dummyDinnerMenuById";
 
 export default function Home() {
   return <DinnerPage />;
@@ -44,16 +40,6 @@ const toTimeLabel = (value: Date | null) => {
   return `${hour}:${minute}`;
 };
 
-const toItemsLabel = (items: DinnerItem["items"] | undefined) => {
-  if (!items || items.length === 0) return "-";
-  return items
-    .map((item) => {
-      const name = dummyDinnerMenuById[item.item_id]?.item_name ?? item.item_id;
-      return `${name} x${item.quantity}`;
-    })
-    .join(", ");
-};
-
 const toTimeValue = (value: Date | null) => {
   if (!value) return "";
   const hour = String(value.getHours()).padStart(2, "0");
@@ -72,15 +58,6 @@ const toDateFromTime = (dateKey: string, hhmm: string) => {
   const minute = Number(minuteStr);
   if (![year, month, day, hour, minute].every((v) => Number.isFinite(v))) return null;
   return new Date(year, month - 1, day, hour, minute, 0, 0);
-};
-
-const compactSelectSx = {
-  minWidth: 120,
-  height: 32,
-  "& .MuiSelect-select": {
-    py: 0.5,
-    fontSize: 13,
-  },
 };
 
 const compactTextFieldSx = {
@@ -117,7 +94,6 @@ const DinnerPage = () => {
     const month = String(now.getMonth() + 1).padStart(2, "0");
     return `${year}-${month}`;
   }, []);
-  const menuOptions = useMemo(() => Object.values(dummyDinnerMenuById), []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
   const { rows, loading } = useDinnerDataByMonth(yearMonth);
 
@@ -217,7 +193,6 @@ const DinnerPage = () => {
       dinner_adult_count: row.dinner_adult_count,
       dinner_child_count: row.dinner_child_count,
       dinner_time: row.dinner_time,
-      items: row.items ?? [],
       memo: row.memo,
     });
   };
@@ -362,125 +337,6 @@ const DinnerPage = () => {
                             sx={{ flex: 1, ...compactTextFieldSx }}
                           />
                         </Stack>
-                      </>
-                    ) : (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          time: {toTimeLabel(row.dinner_time)}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          items: {toItemsLabel(row.items)}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mt: 1, whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-                        >
-                          {row.memo || "-"}
-                        </Typography>
-                      </>
-                    )}
-                    {editingId === row.id ? (
-                      <>
-                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            items
-                          </Typography>
-                          <IconButton
-                            aria-label="追加"
-                            size="small"
-                            onClick={() => {
-                              setEditingDraft((prev) => {
-                                const currentItems = prev?.items ?? row.items ?? [];
-                                return {
-                                  ...(prev ?? {}),
-                                  items: [...currentItems, { item_id: "", quantity: 0 }],
-                                };
-                              });
-                            }}
-                          >
-                            <AddIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
-                        <Stack spacing={0.5} sx={{ mt: 1 }}>
-                          {(editingDraft?.items ?? row.items ?? []).map((item, index) => {
-                            return (
-                              <Stack
-                                key={`${item.item_id || "empty"}-${index}`}
-                                direction="row"
-                                spacing={1}
-                                alignItems="center"
-                              >
-                                <Select
-                                  size="small"
-                                  value={item.item_id}
-                                  onChange={(e) => {
-                                    const nextId = e.target.value;
-                                    setEditingDraft((prev) => {
-                                      const currentItems = prev?.items ?? row.items ?? [];
-                                      const updated = currentItems.map((current, idx) =>
-                                        idx === index ? { ...current, item_id: nextId } : current
-                                      );
-                                      if (!nextId) return { ...(prev ?? {}), items: updated };
-                                      const firstIndex = updated.findIndex(
-                                        (current, idx) => current.item_id === nextId && idx !== index
-                                      );
-                                      if (firstIndex >= 0) {
-                                        updated[firstIndex].quantity += updated[index].quantity;
-                                        updated.splice(index, 1);
-                                      }
-                                      return { ...(prev ?? {}), items: updated };
-                                    });
-                                  }}
-                                  sx={compactSelectSx}
-                                >
-                                  <MenuItem value="">-</MenuItem>
-                                  {menuOptions.map((menu) => (
-                                    <MenuItem key={menu.item_id} value={menu.item_id}>
-                                      {menu.item_name}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                                <TextField
-                                  label="qty"
-                                  type="number"
-                                  size="small"
-                                  value={item.quantity}
-                                  onChange={(e) => {
-                                    const next = Number(e.target.value);
-                                    const quantity = Number.isFinite(next) && next >= 0 ? next : 0;
-                                    setEditingDraft((prev) => {
-                                      const currentItems = prev?.items ?? row.items ?? [];
-                                      const updated = currentItems.map((current, idx) =>
-                                        idx === index ? { ...current, quantity } : current
-                                      );
-                                      return { ...(prev ?? {}), items: updated };
-                                    });
-                                  }}
-                                  inputProps={{ min: 0, max: 99 }}
-                                  sx={{ width: 90, ...compactTextFieldSx }}
-                                />
-                                <IconButton
-                                  aria-label="削除"
-                                  size="small"
-                                  sx={{ width: 24, height: 24 }}
-                                  onClick={() => {
-                                    setEditingDraft((prev) => {
-                                      const currentItems = prev?.items ?? row.items ?? [];
-                                      const updated = currentItems.filter((_, idx) => idx !== index);
-                                      return { ...(prev ?? {}), items: updated };
-                                    });
-                                  }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
-                              </Stack>
-                            );
-                          })}
-                        </Stack>
                         <TextField
                           label="memo"
                           placeholder="保存されません"
@@ -506,7 +362,23 @@ const DinnerPage = () => {
                           </Button>
                         </Stack>
                       </>
-                    ) : null}
+                    ) : (
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          time: {toTimeLabel(row.dinner_time)}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 1, whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                        >
+                          {row.memo || "-"}
+                        </Typography>
+                      </>
+                    )}
                   </Paper>
                 ))}
               </Box>
