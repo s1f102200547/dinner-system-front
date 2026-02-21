@@ -23,6 +23,7 @@ const dt = (dateKey: string, hhmm: string) => {
  */
 const item = (params: {
   id: string;
+  origin?: DinnerItem["origin"];
   dateKey: string;
   status?: DinnerStatus;
   name: string;
@@ -36,6 +37,7 @@ const item = (params: {
 
   return {
     id: params.id,
+    origin: params.origin ?? "dinner-system-front",
     dateKey: params.dateKey,
     status: params.status ?? "coming",
     dinner_customer_name: params.name,
@@ -71,6 +73,7 @@ export const dummyDinnerByDate: DinnerByDate = {
   "2025-12-30": {
     auto_901: item({
       id: "auto_901",
+      origin: "ryokan-system-front",
       dateKey: "2025-12-30",
       status: "coming",
       name: "Year End Guest",
@@ -99,6 +102,7 @@ export const dummyDinnerByDate: DinnerByDate = {
     }),
     auto_002: item({
       id: "auto_002",
+      origin: "ryokan-system-front",
       dateKey: "2026-01-10",
       status: "coming",
       name: "John Smith",
@@ -111,6 +115,7 @@ export const dummyDinnerByDate: DinnerByDate = {
   "2026-01-11": {
     auto_003: item({
       id: "auto_003",
+      origin: "ryokan-system-front",
       dateKey: "2026-01-11",
       status: "coming",
       name: "Chen Wei",
@@ -131,6 +136,7 @@ export const dummyDinnerByDate: DinnerByDate = {
     }),
     auto_005: item({
       id: "auto_005",
+      origin: "ryokan-system-front",
       dateKey: "2026-01-12",
       status: "coming",
       name: "Guest No Memo",
@@ -159,6 +165,7 @@ export const dummyDinnerByDate: DinnerByDate = {
   "2026-02-01": {
     auto_006: item({
       id: "auto_006",
+      origin: "ryokan-system-front",
       dateKey: "2026-02-01",
       status: "coming",
       name: "Feb Guest",
@@ -181,6 +188,7 @@ export const dummyDinnerByDate: DinnerByDate = {
   "2026-02-18": {
     auto_008: item({
       id: "auto_008",
+      origin: "ryokan-system-front",
       dateKey: "2026-02-18",
       status: "coming",
       name: "No Time Guest",
@@ -207,6 +215,7 @@ export const dummyDinnerByDate: DinnerByDate = {
   "2026-03-15": {
     auto_010: item({
       id: "auto_010",
+      origin: "ryokan-system-front",
       dateKey: "2026-03-15",
       status: "coming",
       name: "Spring Family",

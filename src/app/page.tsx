@@ -102,6 +102,7 @@ const DinnerPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
   const editingCardRef = useRef<HTMLDivElement | null>(null);
+  const isEditable = (row: DinnerItem) => row.origin === "dinner-system-front";
 
   const cancelEdit = () => {
     setEditingId(null);
@@ -171,6 +172,7 @@ const DinnerPage = () => {
     const now = new Date();
     const created: DinnerItem = {
       id,
+      origin: "dinner-system-front",
       dateKey,
       status: "coming",
       dinner_customer_name: "name",
@@ -187,6 +189,7 @@ const DinnerPage = () => {
   };
 
   const beginEdit = (row: DinnerItem) => {
+    if (!isEditable(row)) return;
     setEditingId(row.id);
     setEditingDraft({
       dinner_customer_name: row.dinner_customer_name,
@@ -199,6 +202,8 @@ const DinnerPage = () => {
 
   const saveEdit = (rowId: string) => {
     if (!editingDraft) return;
+    const target = dinnerRows.find((row) => row.id === rowId);
+    if (!target || !isEditable(target)) return;
     updateRow(rowId, editingDraft);
     cancelEdit();
   };
@@ -269,7 +274,7 @@ const DinnerPage = () => {
                             aria-label="編集"
                             size="small"
                             onClick={() => beginEdit(row)}
-                            disabled={editingId !== null && editingId !== row.id}
+                            disabled={!isEditable(row) || (editingId !== null && editingId !== row.id)}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>

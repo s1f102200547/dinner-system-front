@@ -1,4 +1,5 @@
 export type DinnerStatus = "coming" | "canceled" | "done";
+export type DinnerOrigin = "dinner-system-front" | "ryokan-system-front";
 
 export type DinnerCreatedBy = "gmail-listener_back" | "dinner_front";
 
@@ -9,6 +10,7 @@ export type DinnerOrderItem = {
 
 export type DinnerItem = {
   id: string; // firebase auto id (doc id)
+  origin: DinnerOrigin;
   dateKey: string; // yyyy-mm-dd
   status: DinnerStatus;
   dinner_customer_name: string;
