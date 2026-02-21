@@ -31,23 +31,3 @@ export type DinnerMenuItem = {
 };
 
 export type DinnerMenuById = Record<string, DinnerMenuItem>;
-
-export type ShiftBreak = {
-  start_time: Date;
-  end_time: Date;
-};
-
-export type StaffShift = {
-  id: string;
-  store_id: string;
-  dateKey: string;
-  staff_id: string;
-  staff_name: string;
-  start_time: Date;
-  end_time: Date;
-  breaks: ShiftBreak[];
-  created_at: Date;
-  updated_at: Date;
-};
-
-export type StaffShiftByDate = Record<string, StaffShift[]>;
