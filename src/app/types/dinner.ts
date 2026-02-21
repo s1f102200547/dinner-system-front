@@ -25,3 +25,18 @@ export type DinnerItem = {
 };
 
 export type DinnerByDate = Record<string, Record<string, DinnerItem>>;
+
+export type GuestInfoV2DinnerTime = string | null;
+
+export type GuestInfoV2Reservation = {
+  dinner: 1 | 0;
+  dinner_time: GuestInfoV2DinnerTime[];
+  cancel?: 1 | 0;
+  check_in_date: string; // yyyy/mm/dd
+  check_out_date: string; // yyyy/mm/dd
+  adult_count: number;
+  child_count: number;
+  guest_name: string;
+};
+
+export type GuestInfoV2ByReservationNumber = Record<string, GuestInfoV2Reservation>;

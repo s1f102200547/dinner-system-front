@@ -6,6 +6,7 @@ import {
   IconButton,
   CircularProgress,
   Paper,
+  Alert,
   Stack,
   TextField,
   Typography,
@@ -95,7 +96,7 @@ const DinnerPage = () => {
     return `${year}-${month}`;
   }, []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
-  const { rows, loading } = useDinnerDataByMonth(yearMonth);
+  const { rows, loading, errors } = useDinnerDataByMonth(yearMonth);
 
   const [createdItems, setCreatedItems] = useState<DinnerItem[]>([]);
   const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
@@ -210,6 +211,15 @@ const DinnerPage = () => {
 
   return (
     <Box sx={{ p: 2 }}>
+      {errors.length > 0 ? (
+        <Stack spacing={1} sx={{ mb: 2 }}>
+          {errors.map((message) => (
+            <Alert key={message} severity="error">
+              {message}
+            </Alert>
+          ))}
+        </Stack>
+      ) : null}
       <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
       {loading ? (
         <Stack alignItems="center" sx={{ py: 6 }}>
