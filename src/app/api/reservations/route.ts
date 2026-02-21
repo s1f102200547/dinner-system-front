@@ -75,6 +75,13 @@ const getErrorLabel = (raw: GuestInfoV2ReservationRaw, dateText?: string) => {
   return `${date} / ${name}`;
 };
 
+const normalizeDinnerTime = (value: unknown): string => {
+  if (typeof value !== "string") return "NONE";
+  if (value === "PENDING") return "PENDING";
+  if (HHMM_PATTERN.test(value)) return value;
+  return "NONE";
+};
+
 const formatFetchedFields = (raw: GuestInfoV2ReservationRaw) => {
   const dinnerTime = Array.isArray(raw.dinner_time)
     ? JSON.stringify(raw.dinner_time)
@@ -155,16 +162,11 @@ export async function GET(request: Request) {
         return;
       }
 
-      if (!Array.isArray(raw.dinner_time)) {
-        errors.push(toErrorMessage(raw, "dinner_time が配列でないため除外しました。"));
-        return;
-      }
-
       const nights = Math.floor((checkOut.getTime() - checkIn.getTime()) / (24 * 60 * 60 * 1000));
-      if (raw.dinner_time.length !== nights) {
-        errors.push(toErrorMessage(raw, `dinner_time の件数(${raw.dinner_time.length})と泊数(${nights})が不一致のため除外しました。`));
-        return;
-      }
+      const rawDinnerTimeList = Array.isArray(raw.dinner_time) ? raw.dinner_time : [];
+      const normalizedDinnerTimeList = Array.from({ length: nights }, (_, i) =>
+        normalizeDinnerTime(rawDinnerTimeList[i])
+      );
 
       if (typeof raw.guest_name !== "string") {
         errors.push(toErrorMessage(raw, "guest_name が不正なため除外しました。"));
@@ -191,13 +193,8 @@ export async function GET(request: Request) {
         const dateKey = toDateKey(stayDate);
         if (!dateKey.startsWith(`${yearMonth}-`)) continue;
 
-        const timeValue = raw.dinner_time[i];
-        if (typeof timeValue !== "string") continue;
-
-        // "NONE" or unknown values are silently skipped by requirement.
-        if (timeValue !== "PENDING" && !HHMM_PATTERN.test(timeValue)) {
-          continue;
-        }
+        const timeValue = normalizedDinnerTimeList[i];
+        if (timeValue === "NONE") continue;
 
         let dinnerTime: string | null = null;
         if (timeValue !== "PENDING") {
