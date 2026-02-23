@@ -30,4 +30,10 @@ const getAdminApp = () => {
   });
 };
 
-export const getAdminDb = () => getFirestore(getAdminApp());
+const resolveFirestoreDatabaseId = () => {
+  const fromEnv = process.env.FIRESTORE_DATABASE_ID?.trim();
+  if (fromEnv) return fromEnv;
+  return process.env.NODE_ENV === "development" ? "test" : "(default)";
+};
+
+export const getAdminDb = () => getFirestore(getAdminApp(), resolveFirestoreDatabaseId());
