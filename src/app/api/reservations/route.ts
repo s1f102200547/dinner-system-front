@@ -3,6 +3,7 @@ import { getAdminDb } from "@/lib/server/firebaseAdmin";
 
 type GuestInfoV2ReservationRaw = {
   dinner_time?: unknown;
+  dinner_info?: unknown;
   cancel?: unknown;
   check_in_date?: unknown;
   check_out_date?: unknown;
@@ -82,10 +83,24 @@ const normalizeDinnerTime = (value: unknown): string => {
   return "NONE";
 };
 
+const normalizeDinnerInfo = (value: unknown, nights: number): string[] => {
+  if (!Array.isArray(value)) {
+    return Array.from({ length: nights }, () => "");
+  }
+
+  return Array.from({ length: nights }, (_, i) => {
+    const info = value[i];
+    return typeof info === "string" ? info : "";
+  });
+};
+
 const formatFetchedFields = (raw: GuestInfoV2ReservationRaw) => {
   const dinnerTime = Array.isArray(raw.dinner_time)
     ? JSON.stringify(raw.dinner_time)
     : String(raw.dinner_time);
+  const dinnerInfo = Array.isArray(raw.dinner_info)
+    ? JSON.stringify(raw.dinner_info)
+    : String(raw.dinner_info);
   return [
     `guest_name=${String(raw.guest_name)}`,
     `check_in_date=${String(raw.check_in_date)}`,
@@ -94,6 +109,7 @@ const formatFetchedFields = (raw: GuestInfoV2ReservationRaw) => {
     `child_count=${String(raw.child_count)}`,
     `cancel=${String(raw.cancel)}`,
     `dinner_time=${dinnerTime}`,
+    `dinner_info=${dinnerInfo}`,
   ].join("\n");
 };
 
@@ -134,6 +150,7 @@ export async function GET(request: Request) {
       .select(
         "cancel",
         "dinner_time",
+        "dinner_info",
         "check_in_date",
         "check_out_date",
         "adult_count",
@@ -167,6 +184,17 @@ export async function GET(request: Request) {
       const normalizedDinnerTimeList = Array.from({ length: nights }, (_, i) =>
         normalizeDinnerTime(rawDinnerTimeList[i])
       );
+      if (!Array.isArray(raw.dinner_info)) {
+        errors.push(toErrorMessage(raw, "dinner_info が配列でないため空文字で補完しました。"));
+      } else if (raw.dinner_info.length !== nights) {
+        errors.push(
+          toErrorMessage(
+            raw,
+            `dinner_info の件数(${raw.dinner_info.length})と泊数(${nights})が不一致のため不足分を空文字で補完しました。`
+          )
+        );
+      }
+      const normalizedDinnerInfoList = normalizeDinnerInfo(raw.dinner_info, nights);
 
       if (typeof raw.guest_name !== "string") {
         errors.push(toErrorMessage(raw, "guest_name が不正なため除外しました。"));
@@ -212,7 +240,7 @@ export async function GET(request: Request) {
           dinner_adult_count: raw.adult_count,
           dinner_child_count: raw.child_count,
           dinner_time: dinnerTime,
-          memo: "",
+          memo: normalizedDinnerInfoList[i] ?? "",
         });
       }
     });
