@@ -7,6 +7,7 @@ import {
   CircularProgress,
   Paper,
   Alert,
+  Chip,
   Stack,
   TextField,
   Typography,
@@ -215,7 +216,9 @@ const DinnerPage = () => {
         <Stack spacing={1} sx={{ mb: 2 }}>
           {errors.map((message, index) => (
             <Alert key={`${message}-${index}`} severity="error">
-              {message}
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {message}
+              </Typography>
             </Alert>
           ))}
         </Stack>
@@ -280,14 +283,25 @@ const DinnerPage = () => {
                           <Typography variant="subtitle2" sx={{ minWidth: 0 }}>
                             {row.dinner_customer_name || "-"}
                           </Typography>
-                          <IconButton
-                            aria-label="編集"
-                            size="small"
-                            onClick={() => beginEdit(row)}
-                            disabled={!isEditable(row) || (editingId !== null && editingId !== row.id)}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            {row.status === "canceled" ? (
+                              <Chip
+                                size="small"
+                                label="キャンセル"
+                                color="error"
+                                variant="outlined"
+                                sx={{ height: 20 }}
+                              />
+                            ) : null}
+                            <IconButton
+                              aria-label="編集"
+                              size="small"
+                              onClick={() => beginEdit(row)}
+                              disabled={!isEditable(row) || (editingId !== null && editingId !== row.id)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
                         </>
                       )}
                     </Stack>

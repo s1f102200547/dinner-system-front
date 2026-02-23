@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/server/firebaseAdmin";
 
 type GuestInfoV2ReservationRaw = {
-  dinner?: unknown;
   dinner_time?: unknown;
   cancel?: unknown;
   check_in_date?: unknown;
@@ -16,12 +15,12 @@ type ApiReservationRow = {
   id: string;
   reservation_number: string;
   origin: "ryokan-system-front";
+  is_canceled: boolean;
   dateKey: string;
-  status: "coming";
   dinner_customer_name: string;
   dinner_adult_count: number;
   dinner_child_count: number;
-  dinner_time: string;
+  dinner_time: string | null;
   memo: string;
 };
 
@@ -76,6 +75,32 @@ const getErrorLabel = (raw: GuestInfoV2ReservationRaw, dateText?: string) => {
   return `${date} / ${name}`;
 };
 
+const normalizeDinnerTime = (value: unknown): string => {
+  if (typeof value !== "string") return "NONE";
+  if (value === "PENDING") return "PENDING";
+  if (HHMM_PATTERN.test(value)) return value;
+  return "NONE";
+};
+
+const formatFetchedFields = (raw: GuestInfoV2ReservationRaw) => {
+  const dinnerTime = Array.isArray(raw.dinner_time)
+    ? JSON.stringify(raw.dinner_time)
+    : String(raw.dinner_time);
+  return [
+    `guest_name=${String(raw.guest_name)}`,
+    `check_in_date=${String(raw.check_in_date)}`,
+    `check_out_date=${String(raw.check_out_date)}`,
+    `adult_count=${String(raw.adult_count)}`,
+    `child_count=${String(raw.child_count)}`,
+    `cancel=${String(raw.cancel)}`,
+    `dinner_time=${dinnerTime}`,
+  ].join("\n");
+};
+
+const toErrorMessage = (raw: GuestInfoV2ReservationRaw, message: string, dateText?: string) => {
+  return `${getErrorLabel(raw, dateText)}: ${message}\n${formatFetchedFields(raw)}`;
+};
+
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
@@ -103,10 +128,18 @@ export async function GET(request: Request) {
     const db = getAdminDb();
     const snapshot = await db
       .collection("guestInfoV2")
-      .where("dinner", "==", 1)
       .where("check_in_date", "<=", monthEndSlash)
       .where("check_out_date", ">", monthStartSlash)
       .orderBy("check_in_date", "asc")
+      .select(
+        "cancel",
+        "dinner_time",
+        "check_in_date",
+        "check_out_date",
+        "adult_count",
+        "child_count",
+        "guest_name"
+      )
       .limit(FETCH_LIMIT)
       .get();
 
@@ -115,37 +148,28 @@ export async function GET(request: Request) {
 
     snapshot.forEach((doc) => {
       const raw = doc.data() as GuestInfoV2ReservationRaw;
-
-      if (raw.dinner !== 1) return;
-      if (raw.cancel === 1) return;
+      const isCanceled = raw.cancel === 1;
 
       if (typeof raw.check_in_date !== "string" || typeof raw.check_out_date !== "string") {
-        errors.push(`${getErrorLabel(raw)}: check_in_date/check_out_date が不正なため除外しました。`);
+        errors.push(toErrorMessage(raw, "check_in_date/check_out_date が不正なため除外しました。"));
         return;
       }
 
       const checkIn = parseSlashDate(raw.check_in_date);
       const checkOut = parseSlashDate(raw.check_out_date);
       if (!checkIn || !checkOut || checkOut <= checkIn) {
-        errors.push(`${getErrorLabel(raw)}: 宿泊日が不正なため除外しました。`);
-        return;
-      }
-
-      if (!Array.isArray(raw.dinner_time)) {
-        errors.push(`${getErrorLabel(raw)}: dinner_time が配列でないため除外しました。`);
+        errors.push(toErrorMessage(raw, "宿泊日が不正なため除外しました。"));
         return;
       }
 
       const nights = Math.floor((checkOut.getTime() - checkIn.getTime()) / (24 * 60 * 60 * 1000));
-      if (raw.dinner_time.length !== nights) {
-        errors.push(
-          `${getErrorLabel(raw)}: dinner_time の件数(${raw.dinner_time.length})と泊数(${nights})が不一致のため除外しました。`
-        );
-        return;
-      }
+      const rawDinnerTimeList = Array.isArray(raw.dinner_time) ? raw.dinner_time : [];
+      const normalizedDinnerTimeList = Array.from({ length: nights }, (_, i) =>
+        normalizeDinnerTime(rawDinnerTimeList[i])
+      );
 
       if (typeof raw.guest_name !== "string") {
-        errors.push(`${getErrorLabel(raw)}: guest_name が不正なため除外しました。`);
+        errors.push(toErrorMessage(raw, "guest_name が不正なため除外しました。"));
         return;
       }
 
@@ -159,7 +183,7 @@ export async function GET(request: Request) {
         raw.adult_count > 9 ||
         raw.child_count > 9
       ) {
-        errors.push(`${getErrorLabel(raw)}: adult_count/child_count が不正なため除外しました。`);
+        errors.push(toErrorMessage(raw, "adult_count/child_count が不正なため除外しました。"));
         return;
       }
 
@@ -169,22 +193,21 @@ export async function GET(request: Request) {
         const dateKey = toDateKey(stayDate);
         if (!dateKey.startsWith(`${yearMonth}-`)) continue;
 
-        const timeValue = raw.dinner_time[i];
-        if (timeValue === null) continue;
-        if (typeof timeValue !== "string" || !HHMM_PATTERN.test(timeValue)) {
-          errors.push(`${getErrorLabel(raw, dateKey)}: dinner_time[${i}] が不正なため当日分を除外しました。`);
-          continue;
-        }
+        const timeValue = normalizedDinnerTimeList[i];
+        if (timeValue === "NONE") continue;
 
-        const dinnerTime = toIsoDateTime(stayDate, timeValue);
-        if (!dinnerTime) continue;
+        let dinnerTime: string | null = null;
+        if (timeValue !== "PENDING") {
+          dinnerTime = toIsoDateTime(stayDate, timeValue);
+          if (!dinnerTime) continue;
+        }
 
         rows.push({
           id: `${doc.id}_${dateKey}`,
           reservation_number: doc.id,
           origin: "ryokan-system-front",
+          is_canceled: isCanceled,
           dateKey,
-          status: "coming",
           dinner_customer_name: raw.guest_name,
           dinner_adult_count: raw.adult_count,
           dinner_child_count: raw.child_count,
@@ -196,7 +219,9 @@ export async function GET(request: Request) {
 
     rows.sort((a, b) => {
       if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
-      if (a.dinner_time !== b.dinner_time) return a.dinner_time.localeCompare(b.dinner_time);
+      const at = a.dinner_time ?? "NONE";
+      const bt = b.dinner_time ?? "NONE";
+      if (at !== bt) return at.localeCompare(bt);
       return a.id.localeCompare(b.id);
     });
 
