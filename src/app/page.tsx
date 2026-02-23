@@ -78,17 +78,6 @@ const compactMultilineSx = {
   },
 };
 
-const createLocalId = () => {
-  const cryptoObj = globalThis.crypto;
-  if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
-  const bytes = new Uint8Array(16);
-  cryptoObj?.getRandomValues?.(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-};
-
 const DinnerPage = () => {
   const currentYearMonth = useMemo(() => {
     const now = new Date();
@@ -97,12 +86,11 @@ const DinnerPage = () => {
     return `${year}-${month}`;
   }, []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
-  const { rows, loading, errors } = useDinnerDataByMonth(yearMonth);
+  const { rows, loading, errors, refetch } = useDinnerDataByMonth(yearMonth);
 
-  const [createdItems, setCreatedItems] = useState<DinnerItem[]>([]);
-  const [overrides, setOverrides] = useState<Record<string, Partial<DinnerItem>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
+  const [saving, setSaving] = useState(false);
   const editingCardRef = useRef<HTMLDivElement | null>(null);
   const isEditable = (row: DinnerItem) => row.origin === "dinner-system-front";
 
@@ -128,33 +116,15 @@ const DinnerPage = () => {
     };
   }, [editingId]);
 
-  const updateRow = (id: string, patch: Partial<DinnerItem>) => {
-    setOverrides((prev) => ({
-      ...prev,
-      [id]: {
-        ...(prev[id] ?? {}),
-        ...patch,
-        updated_at: new Date(),
-      },
-    }));
-  };
-
-  const dinnerRows = useMemo(() => {
-    const visibleCreated = yearMonth
-      ? createdItems.filter((row) => row.dateKey.startsWith(`${yearMonth}-`))
-      : createdItems;
-    return [...rows, ...visibleCreated].map((row) => ({ ...row, ...(overrides[row.id] ?? {}) }));
-  }, [rows, createdItems, overrides, yearMonth]);
-
   const dinnerByDate = useMemo(() => {
     const grouped = new Map<string, DinnerItem[]>();
-    dinnerRows.forEach((row) => {
+    rows.forEach((row) => {
       const key = row.dateKey || "日付未設定";
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(row);
     });
     return grouped;
-  }, [dinnerRows]);
+  }, [rows]);
 
   const allDateKeysInMonth = useMemo(() => {
     if (!yearMonth) return [] as string[];
@@ -169,25 +139,35 @@ const DinnerPage = () => {
     });
   }, [yearMonth]);
 
-  const addEmptyReservation = (dateKey: string) => {
-    const id = createLocalId();
-    const now = new Date();
-    const created: DinnerItem = {
-      id,
-      origin: "dinner-system-front",
-      dateKey,
-      status: "coming",
-      dinner_customer_name: "name",
-      dinner_adult_count: 0,
-      dinner_child_count: 0,
-      dinner_time: null,
-      items: [],
-      memo: "",
-      created_by: "dinner_front",
-      created_at: now,
-      updated_at: now,
-    };
-    setCreatedItems((prev) => [...prev, created]);
+  const addEmptyReservation = async (dateKey: string) => {
+    try {
+      setSaving(true);
+      const response = await fetch("/api/dinner-reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dateKey,
+          status: "coming",
+          dinner_customer_name: "name",
+          dinner_adult_count: 0,
+          dinner_child_count: 0,
+          dinner_time: null,
+          memo: "",
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { errors?: string[] };
+        throw new Error(payload.errors?.[0] ?? "Failed to create reservation");
+      }
+
+      refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      window.alert(`追加に失敗しました: ${message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const beginEdit = (row: DinnerItem) => {
@@ -199,15 +179,46 @@ const DinnerPage = () => {
       dinner_child_count: row.dinner_child_count,
       dinner_time: row.dinner_time,
       memo: row.memo,
+      status: row.status,
     });
   };
 
-  const saveEdit = (rowId: string) => {
+  const saveEdit = async (rowId: string) => {
     if (!editingDraft) return;
-    const target = dinnerRows.find((row) => row.id === rowId);
+    const target = rows.find((row) => row.id === rowId);
     if (!target || !isEditable(target)) return;
-    updateRow(rowId, editingDraft);
-    cancelEdit();
+
+    try {
+      setSaving(true);
+      const response = await fetch(`/api/dinner-reservations/${encodeURIComponent(rowId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: editingDraft.status ?? target.status,
+          dinner_customer_name: editingDraft.dinner_customer_name ?? target.dinner_customer_name,
+          dinner_adult_count: editingDraft.dinner_adult_count ?? target.dinner_adult_count,
+          dinner_child_count: editingDraft.dinner_child_count ?? target.dinner_child_count,
+          dinner_time:
+            editingDraft.dinner_time === undefined
+              ? (target.dinner_time ? target.dinner_time.toISOString() : null)
+              : (editingDraft.dinner_time ? editingDraft.dinner_time.toISOString() : null),
+          memo: editingDraft.memo ?? target.memo,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { errors?: string[] };
+        throw new Error(payload.errors?.[0] ?? "Failed to update reservation");
+      }
+
+      cancelEdit();
+      refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      window.alert(`更新に失敗しました: ${message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -248,7 +259,12 @@ const DinnerPage = () => {
             <Paper key={dateKey} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                 <Typography variant="h6">{formatDayLabel(dateKey)}</Typography>
-                <IconButton aria-label="追加" onClick={() => addEmptyReservation(dateKey)} size="small">
+                <IconButton
+                  aria-label="追加"
+                  onClick={() => void addEmptyReservation(dateKey)}
+                  size="small"
+                  disabled={saving}
+                >
                   <AddIcon fontSize="small" />
                 </IconButton>
               </Stack>
@@ -297,7 +313,7 @@ const DinnerPage = () => {
                               aria-label="編集"
                               size="small"
                               onClick={() => beginEdit(row)}
-                              disabled={!isEditable(row) || (editingId !== null && editingId !== row.id)}
+                              disabled={!isEditable(row) || (editingId !== null && editingId !== row.id) || saving}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -368,7 +384,6 @@ const DinnerPage = () => {
                         </Stack>
                         <TextField
                           label="memo"
-                          placeholder="保存されません"
                           size="small"
                           fullWidth
                           multiline
@@ -383,10 +398,15 @@ const DinnerPage = () => {
                           }
                         />
                         <Stack direction="row" spacing={1} sx={{ mt: 1, justifyContent: "flex-end" }}>
-                          <Button size="small" onClick={cancelEdit}>
+                          <Button size="small" onClick={cancelEdit} disabled={saving}>
                             キャンセル
                           </Button>
-                          <Button size="small" variant="contained" onClick={() => saveEdit(row.id)}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => void saveEdit(row.id)}
+                            disabled={saving}
+                          >
                             保存
                           </Button>
                         </Stack>
