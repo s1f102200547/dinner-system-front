@@ -184,9 +184,7 @@ export async function GET(request: Request) {
       const normalizedDinnerTimeList = Array.from({ length: nights }, (_, i) =>
         normalizeDinnerTime(rawDinnerTimeList[i])
       );
-      if (!Array.isArray(raw.dinner_info)) {
-        errors.push(toErrorMessage(raw, "dinner_info が配列でないため空文字で補完しました。"));
-      } else if (raw.dinner_info.length !== nights) {
+      if (Array.isArray(raw.dinner_info) && raw.dinner_info.length !== nights) {
         errors.push(
           toErrorMessage(
             raw,
