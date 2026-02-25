@@ -32,7 +32,8 @@ export const verifySessionFromRequest = async (request: Request): Promise<Decode
   const sessionCookie = getSessionCookieFromRequest(request);
   if (!sessionCookie) return null;
 
-  if (process.env.E2E_AUTH_MOCK === "1") {
+  const isE2EAuthMockAllowed = process.env.NODE_ENV === "test" && process.env.E2E_AUTH_MOCK === "1";
+  if (isE2EAuthMockAllowed) {
     if (!sessionCookie.startsWith("e2e.session.")) return null;
     const uid = sessionCookie.replace("e2e.session.", "");
     if (!uid || uid === "deleted-user" || uid === "disabled-user") return null;

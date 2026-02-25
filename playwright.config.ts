@@ -16,7 +16,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "E2E_AUTH_MOCK=1 npm run dev",
+    command: "NODE_ENV=test E2E_AUTH_MOCK=1 npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

@@ -10,6 +10,7 @@ type LoginBody = {
 export const runtime = "nodejs";
 
 const isE2EAuthMockEnabled = () => process.env.E2E_AUTH_MOCK === "1";
+const isE2EAuthMockAllowed = () => process.env.NODE_ENV === "test" && isE2EAuthMockEnabled();
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: ["idToken is required"] }, { status: 400 });
     }
 
-    if (isE2EAuthMockEnabled()) {
+    if (isE2EAuthMockAllowed()) {
       if (body.idToken !== "e2e.valid.id-token") {
         return NextResponse.json({ errors: ["Login failed: invalid idToken"] }, { status: 401 });
       }
