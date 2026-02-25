@@ -8,7 +8,6 @@ const isPublicPath = (pathname: string) => {
   if (pathname.startsWith("/_next/")) return true;
   if (pathname === "/favicon.ico") return true;
   if (pathname.startsWith("/api/auth/login")) return true;
-  if (pathname.startsWith("/api/auth/logout")) return true;
   return false;
 };
 
