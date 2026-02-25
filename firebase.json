@@ -1,0 +1,9 @@
+{
+  "apphosting": {
+    "backends": {
+      "dinner-system-front": {
+        "rootDir": "."
+      }
+    }
+  }
+}
