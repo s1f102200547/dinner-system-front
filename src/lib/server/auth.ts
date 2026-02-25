@@ -31,8 +31,23 @@ export const getSessionCookieFromRequest = (request: Request) => {
 export const verifySessionFromRequest = async (request: Request): Promise<DecodedIdToken | null> => {
   const sessionCookie = getSessionCookieFromRequest(request);
   if (!sessionCookie) return null;
+
+  if (process.env.E2E_AUTH_MOCK === "1") {
+    if (!sessionCookie.startsWith("e2e.session.")) return null;
+    const uid = sessionCookie.replace("e2e.session.", "");
+    if (!uid || uid === "deleted-user" || uid === "disabled-user") return null;
+    return {
+      uid,
+      email: `${uid}@example.com`,
+    } as DecodedIdToken;
+  }
+
   try {
-    return await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const adminAuth = getAdminAuth();
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const user = await adminAuth.getUser(decoded.uid);
+    if (user.disabled) return null;
+    return decoded;
   } catch {
     return null;
   }

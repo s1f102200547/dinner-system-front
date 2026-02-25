@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       const response = NextResponse.json({ ok: true });
       response.cookies.set({
         name: SESSION_COOKIE_NAME,
-        value: `e2e.session.${Date.now()}`,
+        value: "e2e.session.valid-user",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
