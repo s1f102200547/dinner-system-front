@@ -22,3 +22,26 @@ test.describe("Unauthenticated access guard", () => {
     expect(payload.errors?.[0]).toBe("Unauthorized");
   });
 });
+
+test.describe("Session cookie presence gate (middleware/proxy)", () => {
+  test("allows protected page access when session cookie exists, without validating cookie content", async ({
+    context,
+    page,
+  }) => {
+    await context.addCookies([
+      {
+        name: "session",
+        value: "e2e.invalid-but-present-session-cookie",
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+
+    await page.goto("/");
+
+    await expect(page).toHaveURL("http://localhost:3000/");
+    await expect(page).not.toHaveURL(/\/login/);
+  });
+});
