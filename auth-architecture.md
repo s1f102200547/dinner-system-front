@@ -80,7 +80,7 @@ E2Eでは、実装詳細よりも次のユーザー体験と安全性を検証�
 
 E2E用モック分岐は次の条件でのみ有効です。
 
-- `NODE_ENV === "test"`
 - `E2E_AUTH_MOCK === "1"`
+- `PLAYWRIGHT_TEST === "1"`
 
 `playwright.config.ts` でのみ有効化し、通常の開発/本番では有効になりません。

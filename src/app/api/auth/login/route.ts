@@ -10,7 +10,9 @@ type LoginBody = {
 export const runtime = "nodejs";
 
 const isE2EAuthMockEnabled = () => process.env.E2E_AUTH_MOCK === "1";
-const isE2EAuthMockAllowed = () => process.env.NODE_ENV === "test" && isE2EAuthMockEnabled();
+const isE2EAuthMockAllowed = () =>
+  isE2EAuthMockEnabled() &&
+  process.env.PLAYWRIGHT_TEST === "1";
 
 export async function POST(request: Request) {
   try {
