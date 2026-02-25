@@ -386,6 +386,15 @@ const DinnerPage = () => {
                                   {row.dinner_customer_name || "-"}
                                 </Typography>
                                 <Stack direction="row" alignItems="center" spacing={0.5}>
+                                  {row.status !== "canceled_stay" && row.status !== "canceled_dinner" ? (
+                                    <Chip
+                                      size="small"
+                                      label={row.origin === "ryokan-system-front" ? "宿泊" : "一般"}
+                                      color={row.origin === "ryokan-system-front" ? "primary" : "default"}
+                                      variant="outlined"
+                                      sx={{ height: 20 }}
+                                    />
+                                  ) : null}
                                   {row.status === "canceled_stay" ? (
                                     <Chip
                                       size="small"
