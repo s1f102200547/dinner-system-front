@@ -511,7 +511,7 @@ const DinnerPage = () => {
                           ) : (
                             <>
                               <Typography variant="body2" color="text.secondary">
-                                adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
+                                大人: {row.dinner_adult_count ?? 0} 子ども: {row.dinner_child_count ?? 0}
                               </Typography>
                               <Typography
                                 variant="body2"
