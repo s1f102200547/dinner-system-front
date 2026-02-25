@@ -12,6 +12,8 @@ import {
   TextField,
   Typography,
   Button,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -131,6 +133,7 @@ const DinnerPage = () => {
   }, []);
   const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
   const { rows, loading, errors, refetch } = useDinnerDataByMonth(yearMonth);
+  const [showCanceledRows, setShowCanceledRows] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<Partial<DinnerItem> | null>(null);
@@ -162,13 +165,18 @@ const DinnerPage = () => {
 
   const dinnerByDate = useMemo(() => {
     const grouped = new Map<string, DinnerItem[]>();
-    rows.forEach((row) => {
+    const visibleRows = rows.filter((row) => {
+      const isCanceled = row.status === "canceled_stay" || row.status === "canceled_dinner";
+      return showCanceledRows || !isCanceled;
+    });
+
+    visibleRows.forEach((row) => {
       const key = row.dateKey || "日付未設定";
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(row);
     });
     return grouped;
-  }, [rows]);
+  }, [rows, showCanceledRows]);
 
   const allDateKeysInMonth = useMemo(() => {
     if (!yearMonth) return [] as string[];
@@ -278,7 +286,19 @@ const DinnerPage = () => {
           ))}
         </Stack>
       ) : null}
-      <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showCanceledRows}
+              onChange={(event) => setShowCanceledRows(event.target.checked)}
+              size="small"
+            />
+          }
+          label="キャンセル表示"
+        />
+      </Stack>
       {loading ? (
         <Stack alignItems="center" sx={{ py: 6 }}>
           <CircularProgress />
@@ -344,11 +364,20 @@ const DinnerPage = () => {
                             {row.dinner_customer_name || "-"}
                           </Typography>
                           <Stack direction="row" alignItems="center" spacing={0.5}>
-                            {row.status === "canceled" ? (
+                            {row.status === "canceled_stay" ? (
                               <Chip
                                 size="small"
-                                label="キャンセル"
+                                label="宿泊キャンセル"
                                 color="error"
+                                variant="outlined"
+                                sx={{ height: 20 }}
+                              />
+                            ) : null}
+                            {row.status === "canceled_dinner" ? (
+                              <Chip
+                                size="small"
+                                label="夕食のみキャンセル"
+                                color="warning"
                                 variant="outlined"
                                 sx={{ height: 20 }}
                               />
@@ -460,9 +489,11 @@ const DinnerPage = () => {
                         <Typography variant="body2" color="text.secondary">
                           adult: {row.dinner_adult_count ?? 0} child: {row.dinner_child_count ?? 0}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          time: {toTimeLabel(row.dinner_time)}
-                        </Typography>
+                        {row.status !== "canceled_stay" && row.status !== "canceled_dinner" ? (
+                          <Typography variant="body2" color="text.secondary">
+                            time: {toTimeLabel(row.dinner_time)}
+                          </Typography>
+                        ) : null}
                         <Typography
                           variant="body2"
                           color="text.secondary"

@@ -4,7 +4,7 @@ import { requireSessionFromRequest } from "@/lib/server/auth";
 import type { DinnerItem } from "@/app/types/dinner";
 
 type PatchBody = {
-  status?: DinnerItem["status"];
+  status?: DinnerItem["status"] | "canceled";
   dinner_customer_name?: string;
   dinner_adult_count?: number;
   dinner_child_count?: number;
@@ -12,8 +12,14 @@ type PatchBody = {
   memo?: string;
 };
 
-const isStatus = (value: unknown): value is DinnerItem["status"] => {
-  return value === "coming" || value === "canceled" || value === "done";
+const isStatus = (value: unknown): value is DinnerItem["status"] | "canceled" => {
+  return (
+    value === "coming" ||
+    value === "done" ||
+    value === "canceled_stay" ||
+    value === "canceled_dinner" ||
+    value === "canceled"
+  );
 };
 
 export const runtime = "nodejs";
@@ -38,7 +44,7 @@ export async function PATCH(
       if (!isStatus(body.status)) {
         return NextResponse.json({ errors: ["Invalid status"] }, { status: 400 });
       }
-      patch.status = body.status;
+      patch.status = body.status === "canceled" ? "canceled_stay" : body.status;
     }
 
     if (body.dinner_customer_name !== undefined) {

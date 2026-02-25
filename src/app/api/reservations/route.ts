@@ -17,7 +17,8 @@ type ApiReservationRow = {
   id: string;
   reservation_number: string;
   origin: "ryokan-system-front";
-  is_canceled: boolean;
+  status: "coming" | "canceled_stay" | "canceled_dinner";
+  dinner_time_kind: "scheduled" | "pending" | "canceled_stay" | "canceled_dinner";
   dateKey: string;
   dinner_customer_name: string;
   dinner_adult_count: number;
@@ -80,6 +81,7 @@ const getErrorLabel = (raw: GuestInfoV2ReservationRaw, dateText?: string) => {
 const normalizeDinnerTime = (value: unknown): string => {
   if (typeof value !== "string") return "NONE";
   if (value === "PENDING") return "PENDING";
+  if (value === "CANCEL") return "CANCEL";
   if (HHMM_PATTERN.test(value)) return value;
   return "NONE";
 };
@@ -224,10 +226,22 @@ export async function GET(request: Request) {
         if (!dateKey.startsWith(`${yearMonth}-`)) continue;
 
         const timeValue = normalizedDinnerTimeList[i];
-        if (timeValue === "NONE") continue;
+        if (!isCanceled && timeValue === "NONE") continue;
 
         let dinnerTime: string | null = null;
-        if (timeValue !== "PENDING") {
+        let status: ApiReservationRow["status"] = "coming";
+        let dinnerTimeKind: ApiReservationRow["dinner_time_kind"] = "pending";
+
+        if (isCanceled) {
+          status = "canceled_stay";
+          dinnerTimeKind = "canceled_stay";
+        } else if (timeValue === "CANCEL") {
+          status = "canceled_dinner";
+          dinnerTimeKind = "canceled_dinner";
+        } else if (timeValue === "PENDING") {
+          dinnerTimeKind = "pending";
+        } else {
+          dinnerTimeKind = "scheduled";
           dinnerTime = toIsoDateTime(stayDate, timeValue);
           if (!dinnerTime) continue;
         }
@@ -236,7 +250,8 @@ export async function GET(request: Request) {
           id: `${doc.id}_${dateKey}`,
           reservation_number: doc.id,
           origin: "ryokan-system-front",
-          is_canceled: isCanceled,
+          status,
+          dinner_time_kind: dinnerTimeKind,
           dateKey,
           dinner_customer_name: raw.guest_name,
           dinner_adult_count: raw.adult_count,
@@ -249,8 +264,17 @@ export async function GET(request: Request) {
 
     rows.sort((a, b) => {
       if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
-      const at = a.dinner_time ?? "NONE";
-      const bt = b.dinner_time ?? "NONE";
+      const rank = (value: ApiReservationRow["dinner_time_kind"]) => {
+        if (value === "scheduled") return 0;
+        if (value === "pending") return 1;
+        if (value === "canceled_dinner") return 2;
+        return 3;
+      };
+      const ra = rank(a.dinner_time_kind);
+      const rb = rank(b.dinner_time_kind);
+      if (ra !== rb) return ra - rb;
+      const at = a.dinner_time ?? "99:99";
+      const bt = b.dinner_time ?? "99:99";
       if (at !== bt) return at.localeCompare(bt);
       return a.id.localeCompare(b.id);
     });

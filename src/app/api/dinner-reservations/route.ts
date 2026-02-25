@@ -36,6 +36,14 @@ const YEAR_MONTH_PATTERN = /^\d{4}-\d{2}$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T/;
 
+const normalizeStatus = (value: unknown): DinnerItem["status"] | null => {
+  if (value === "coming" || value === "done" || value === "canceled_stay" || value === "canceled_dinner") {
+    return value;
+  }
+  if (value === "canceled") return "canceled_stay";
+  return null;
+};
+
 const toDateKeyRange = (yearMonth: string) => {
   const [yearStr, monthStr] = yearMonth.split("-");
   const year = Number(yearStr);
@@ -59,13 +67,10 @@ const toIso = (value: unknown) => {
   return null;
 };
 
-const isStatus = (value: unknown): value is DinnerItem["status"] => {
-  return value === "coming" || value === "canceled" || value === "done";
-};
-
 const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | null => {
   if (raw.origin !== "dinner-system-front") return null;
-  if (!isStatus(raw.status)) return null;
+  const status = normalizeStatus(raw.status);
+  if (!status) return null;
   if (typeof raw.dateKey !== "string" || !DATE_KEY_PATTERN.test(raw.dateKey)) return null;
   if (typeof raw.dinner_customer_name !== "string") return null;
   if (typeof raw.dinner_adult_count !== "number" || !Number.isInteger(raw.dinner_adult_count)) return null;
@@ -83,7 +88,7 @@ const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | nu
   return {
     id,
     origin: "dinner-system-front",
-    status: raw.status,
+    status,
     dateKey: raw.dateKey,
     dinner_customer_name: raw.dinner_customer_name,
     dinner_adult_count: raw.dinner_adult_count,
@@ -158,7 +163,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: ["dateKey is required in YYYY-MM-DD format"] }, { status: 400 });
     }
 
-    const status: DinnerItem["status"] = isStatus(body.status) ? body.status : "coming";
+    const status = normalizeStatus(body.status) ?? "coming";
     const customerName = typeof body.dinner_customer_name === "string" ? body.dinner_customer_name : "";
     const adultCount =
       typeof body.dinner_adult_count === "number" && Number.isInteger(body.dinner_adult_count)
