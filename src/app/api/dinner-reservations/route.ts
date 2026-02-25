@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/server/firebaseAdmin";
+import { requireSessionFromRequest } from "@/lib/server/auth";
 import type { DinnerItem } from "@/app/types/dinner";
 
 type DinnerReservationDoc = {
@@ -98,6 +99,9 @@ const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | nu
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const auth = await requireSessionFromRequest(request);
+  if (!auth.ok) return auth.response;
+
   const { searchParams } = new URL(request.url);
   const yearMonth = searchParams.get("yearMonth") ?? "";
 
@@ -145,6 +149,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireSessionFromRequest(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as Partial<DinnerReservationRow>;
     if (typeof body.dateKey !== "string" || !DATE_KEY_PATTERN.test(body.dateKey)) {

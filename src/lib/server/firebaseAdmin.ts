@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 
 type FirebaseEnvKey =
   | "FIREBASE_PROJECT_ID"
@@ -14,7 +15,7 @@ const getRequiredEnv = (key: FirebaseEnvKey) => {
   return value;
 };
 
-const getAdminApp = () => {
+export const getAdminApp = () => {
   if (getApps().length > 0) return getApps()[0];
 
   const projectId = getRequiredEnv("FIREBASE_PROJECT_ID");
@@ -37,3 +38,5 @@ const resolveFirestoreDatabaseId = () => {
 };
 
 export const getAdminDb = () => getFirestore(getAdminApp(), resolveFirestoreDatabaseId());
+
+export const getAdminAuth = () => getAuth(getAdminApp());

@@ -15,14 +15,58 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import { useRouter } from "next/navigation";
 import MonthSelector from "@/app/components/MonthSelector";
 import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
 
 export default function Home() {
-  return <DinnerPage />;
+  return <HomeAuthGate />;
 }
+
+const HomeAuthGate = () => {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let canceled = false;
+    const run = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" });
+        if (canceled) return;
+        if (!response.ok) {
+          router.replace("/login?next=%2F");
+          return;
+        }
+        setIsAuthenticated(true);
+      } catch {
+        if (!canceled) {
+          router.replace("/login?next=%2F");
+        }
+      } finally {
+        if (!canceled) {
+          setIsCheckingAuth(false);
+        }
+      }
+    };
+    void run();
+    return () => {
+      canceled = true;
+    };
+  }, [router]);
+
+  if (isCheckingAuth || !isAuthenticated) {
+    return (
+      <Stack alignItems="center" justifyContent="center" sx={{ minHeight: "100vh" }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
+  return <DinnerPage />;
+};
 
 const DOW_LABELS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 

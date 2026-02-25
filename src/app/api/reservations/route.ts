@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/server/firebaseAdmin";
+import { requireSessionFromRequest } from "@/lib/server/auth";
 
 type GuestInfoV2ReservationRaw = {
   dinner_time?: unknown;
@@ -120,6 +121,9 @@ const toErrorMessage = (raw: GuestInfoV2ReservationRaw, message: string, dateTex
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const auth = await requireSessionFromRequest(request);
+  if (!auth.ok) return auth.response;
+
   const { searchParams } = new URL(request.url);
   const yearMonth = searchParams.get("yearMonth") ?? "";
 

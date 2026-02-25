@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/server/firebaseAdmin";
+import { requireSessionFromRequest } from "@/lib/server/auth";
 import type { DinnerItem } from "@/app/types/dinner";
 
 type PatchBody = {
@@ -21,6 +22,9 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireSessionFromRequest(request);
+  if (!auth.ok) return auth.response;
+
   const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ errors: ["id is required"] }, { status: 400 });
