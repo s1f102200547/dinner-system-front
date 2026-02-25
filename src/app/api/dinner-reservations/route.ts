@@ -32,7 +32,6 @@ type DinnerReservationRow = {
   updated_at: string;
 };
 
-const YEAR_MONTH_PATTERN = /^\d{4}-\d{2}$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T/;
 
@@ -42,16 +41,6 @@ const normalizeStatus = (value: unknown): DinnerItem["status"] | null => {
   }
   if (value === "canceled") return "canceled_stay";
   return null;
-};
-
-const toDateKeyRange = (yearMonth: string) => {
-  const [yearStr, monthStr] = yearMonth.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const start = `${yearStr}-${monthStr}-01`;
-  const end = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
-  return { start, end };
 };
 
 const toIso = (value: unknown) => {
@@ -108,20 +97,17 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const yearMonth = searchParams.get("yearMonth") ?? "";
+  const dateKey = searchParams.get("dateKey") ?? "";
 
-  if (!YEAR_MONTH_PATTERN.test(yearMonth)) {
-    return NextResponse.json({ rows: [], errors: ["Invalid yearMonth. Expected format: YYYY-MM"] }, { status: 400 });
+  if (!DATE_KEY_PATTERN.test(dateKey)) {
+    return NextResponse.json({ rows: [], errors: ["Invalid dateKey. Expected format: YYYY-MM-DD"] }, { status: 400 });
   }
-
-  const { start, end } = toDateKeyRange(yearMonth);
 
   try {
     const db = getAdminDb();
     const snapshot = await db
       .collection("dinnerReservations")
-      .where("dateKey", ">=", start)
-      .where("dateKey", "<=", end)
+      .where("dateKey", "==", dateKey)
       .orderBy("dateKey", "asc")
       .limit(500)
       .get();

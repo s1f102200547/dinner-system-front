@@ -124,7 +124,7 @@ const sortDinnerRows = (items: DinnerItem[]) => {
   });
 };
 
-export function useDinnerDataByMonth(yearMonth: string): {
+export function useDinnerDataByDate(dateKey: string): {
   rows: DinnerItem[];
   loading: boolean;
   errors: string[];
@@ -146,11 +146,11 @@ export function useDinnerDataByMonth(yearMonth: string): {
       setLoading(true);
       try {
         const [ryokanRes, dinnerRes] = await Promise.all([
-          fetch(`/api/reservations?yearMonth=${encodeURIComponent(yearMonth)}`, {
+          fetch(`/api/reservations?dateKey=${encodeURIComponent(dateKey)}`, {
             method: "GET",
             cache: "no-store",
           }),
-          fetch(`/api/dinner-reservations?yearMonth=${encodeURIComponent(yearMonth)}`, {
+          fetch(`/api/dinner-reservations?dateKey=${encodeURIComponent(dateKey)}`, {
             method: "GET",
             cache: "no-store",
           }),
@@ -217,7 +217,7 @@ export function useDinnerDataByMonth(yearMonth: string): {
     return () => {
       isCancelled = true;
     };
-  }, [yearMonth, reloadToken]);
+  }, [dateKey, reloadToken]);
 
   return { rows, loading, errors, refetch };
 }

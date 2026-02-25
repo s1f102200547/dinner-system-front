@@ -27,7 +27,7 @@ type ApiReservationRow = {
   memo: string;
 };
 
-const YEAR_MONTH_PATTERN = /^\d{4}-\d{2}$/;
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const FETCH_LIMIT = 300;
 
@@ -127,31 +127,30 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const yearMonth = searchParams.get("yearMonth") ?? "";
+  const dateKey = searchParams.get("dateKey") ?? "";
 
-  if (!YEAR_MONTH_PATTERN.test(yearMonth)) {
+  if (!DATE_KEY_PATTERN.test(dateKey)) {
     return NextResponse.json(
       {
         rows: [],
-        errors: ["Invalid yearMonth. Expected format: YYYY-MM"],
+        errors: ["Invalid dateKey. Expected format: YYYY-MM-DD"],
       },
       { status: 400 }
     );
   }
 
-  const [yearStr, monthStr] = yearMonth.split("-");
+  const [yearStr, monthStr, dayStr] = dateKey.split("-");
   const year = Number(yearStr);
   const month = Number(monthStr);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const monthStartSlash = toSlashDate(year, month, 1);
-  const monthEndSlash = toSlashDate(year, month, daysInMonth);
+  const day = Number(dayStr);
+  const targetDateSlash = toSlashDate(year, month, day);
 
   try {
     const db = getAdminDb();
     const snapshot = await db
       .collection("guestInfoV2")
-      .where("check_in_date", "<=", monthEndSlash)
-      .where("check_out_date", ">", monthStartSlash)
+      .where("check_in_date", "<=", targetDateSlash)
+      .where("check_out_date", ">", targetDateSlash)
       .orderBy("check_in_date", "asc")
       .select(
         "cancel",
@@ -222,8 +221,8 @@ export async function GET(request: Request) {
       for (let i = 0; i < nights; i += 1) {
         const stayDate = new Date(checkIn);
         stayDate.setDate(checkIn.getDate() + i);
-        const dateKey = toDateKey(stayDate);
-        if (!dateKey.startsWith(`${yearMonth}-`)) continue;
+        const stayDateKey = toDateKey(stayDate);
+        if (stayDateKey !== dateKey) continue;
 
         const timeValue = normalizedDinnerTimeList[i];
         if (!isCanceled && timeValue === "NONE") continue;
@@ -252,7 +251,7 @@ export async function GET(request: Request) {
           origin: "ryokan-system-front",
           status,
           dinner_time_kind: dinnerTimeKind,
-          dateKey,
+          dateKey: stayDateKey,
           dinner_customer_name: raw.guest_name,
           dinner_adult_count: raw.adult_count,
           dinner_child_count: raw.child_count,

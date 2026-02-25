@@ -18,8 +18,8 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import { useRouter } from "next/navigation";
-import MonthSelector from "@/app/components/MonthSelector";
-import { useDinnerDataByMonth } from "@/app/hooks/useDinnerDataByMonth";
+import DaySelector from "@/app/components/DaySelector";
+import { useDinnerDataByDate } from "@/app/hooks/useDinnerDataByMonth";
 import type { DinnerItem } from "@/app/types/dinner";
 import { parseDate } from "@/app/utils/dateUtils";
 
@@ -125,14 +125,15 @@ const compactMultilineSx = {
 };
 
 const DinnerPage = () => {
-  const currentYearMonth = useMemo(() => {
+  const currentDateKey = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
-    return `${year}-${month}`;
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
-  const [yearMonth, setYearMonth] = useState<string>(currentYearMonth);
-  const { rows, loading, errors, refetch } = useDinnerDataByMonth(yearMonth);
+  const [dateKey, setDateKey] = useState<string>(currentDateKey);
+  const { rows, loading, errors, refetch } = useDinnerDataByDate(dateKey);
   const [showCanceledRows, setShowCanceledRows] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -178,27 +179,16 @@ const DinnerPage = () => {
     return grouped;
   }, [rows, showCanceledRows]);
 
-  const allDateKeysInMonth = useMemo(() => {
-    if (!yearMonth) return [] as string[];
-    const [yearStr, monthStr] = yearMonth.split("-");
-    const year = Number(yearStr);
-    const month = Number(monthStr);
-    if (!Number.isFinite(year) || !Number.isFinite(month)) return [] as string[];
-    const daysInMonth = new Date(year, month, 0).getDate();
-    return Array.from({ length: daysInMonth }, (_, i) => {
-      const day = String(i + 1).padStart(2, "0");
-      return `${yearStr}-${monthStr}-${day}`;
-    });
-  }, [yearMonth]);
+  const dayRows = useMemo(() => dinnerByDate.get(dateKey) ?? [], [dinnerByDate, dateKey]);
 
-  const addEmptyReservation = async (dateKey: string) => {
+  const addEmptyReservation = async (targetDateKey: string) => {
     try {
       setSaving(true);
       const response = await fetch("/api/dinner-reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dateKey,
+          dateKey: targetDateKey,
           status: "coming",
           dinner_customer_name: "name",
           dinner_adult_count: 0,
@@ -287,7 +277,7 @@ const DinnerPage = () => {
         </Stack>
       ) : null}
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <MonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+        <DaySelector dateKey={dateKey} onChange={setDateKey} />
         <FormControlLabel
           control={
             <Switch
@@ -306,13 +296,10 @@ const DinnerPage = () => {
             予約を読み込み中です…
           </Typography>
         </Stack>
-      ) : yearMonth && allDateKeysInMonth.length === 0 ? (
+      ) : !dateKey ? (
         <Typography color="text.secondary">表示月が不正です。</Typography>
-      ) : !yearMonth ? (
-        <Typography color="text.secondary">月未選択（全月表示）は未対応です。</Typography>
       ) : (
-        allDateKeysInMonth.map((dateKey) => {
-          const dayRows = dinnerByDate.get(dateKey) ?? [];
+        (() => {
           const sorted = [...dayRows].sort((a, b) => {
             const at = a.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
             const bt = b.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -508,7 +495,7 @@ const DinnerPage = () => {
               </Box>
             </Paper>
           );
-        })
+        })()
       )}
     </Box>
   );
