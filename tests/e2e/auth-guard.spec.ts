@@ -24,7 +24,7 @@ test.describe("Unauthenticated access guard", () => {
 });
 
 test.describe("Session cookie presence gate (middleware/proxy)", () => {
-  test("allows protected page access when session cookie exists, without validating cookie content", async ({
+  test("invalid session cookie is redirected to login by client auth check", async ({
     context,
     page,
   }) => {
@@ -41,8 +41,7 @@ test.describe("Session cookie presence gate (middleware/proxy)", () => {
 
     await page.goto("/");
 
-    await expect(page).toHaveURL("http://localhost:3000/");
-    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/login\?next=%2F$/);
   });
 });
 
