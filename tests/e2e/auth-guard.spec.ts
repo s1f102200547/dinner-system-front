@@ -45,3 +45,40 @@ test.describe("Session cookie presence gate (middleware/proxy)", () => {
     await expect(page).not.toHaveURL(/\/login/);
   });
 });
+
+test.describe("API final defense with verifySessionCookie(..., true)", () => {
+  test.beforeEach(async ({ context }) => {
+    await context.addCookies([
+      {
+        name: "session",
+        value: "e2e.forged-or-expired-session-cookie",
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+  });
+
+  test("forged/expired session is rejected by /api/reservations", async ({ context }) => {
+    const response = await context.request.get("/api/reservations?yearMonth=2026-02");
+    expect(response.status()).toBe(401);
+    await expect(response.json()).resolves.toEqual({ errors: ["Unauthorized"] });
+  });
+
+  test("forged/expired session is rejected by /api/dinner-reservations", async ({ context }) => {
+    const response = await context.request.get("/api/dinner-reservations?yearMonth=2026-02");
+    expect(response.status()).toBe(401);
+    await expect(response.json()).resolves.toEqual({ errors: ["Unauthorized"] });
+  });
+
+  test("forged/expired session is rejected by /api/dinner-reservations/[id] PATCH", async ({
+    context,
+  }) => {
+    const response = await context.request.patch("/api/dinner-reservations/e2e-id", {
+      data: { memo: "e2e update" },
+    });
+    expect(response.status()).toBe(401);
+    await expect(response.json()).resolves.toEqual({ errors: ["Unauthorized"] });
+  });
+});
