@@ -32,18 +32,15 @@ type DinnerReservationRow = {
   updated_at: string;
 };
 
-const YEAR_MONTH_PATTERN = /^\d{4}-\d{2}$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T/;
 
-const toDateKeyRange = (yearMonth: string) => {
-  const [yearStr, monthStr] = yearMonth.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const start = `${yearStr}-${monthStr}-01`;
-  const end = `${yearStr}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
-  return { start, end };
+const normalizeStatus = (value: unknown): DinnerItem["status"] | null => {
+  if (value === "coming" || value === "done" || value === "canceled_stay" || value === "canceled_dinner") {
+    return value;
+  }
+  if (value === "canceled") return "canceled_stay";
+  return null;
 };
 
 const toIso = (value: unknown) => {
@@ -59,13 +56,10 @@ const toIso = (value: unknown) => {
   return null;
 };
 
-const isStatus = (value: unknown): value is DinnerItem["status"] => {
-  return value === "coming" || value === "canceled" || value === "done";
-};
-
 const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | null => {
   if (raw.origin !== "dinner-system-front") return null;
-  if (!isStatus(raw.status)) return null;
+  const status = normalizeStatus(raw.status);
+  if (!status) return null;
   if (typeof raw.dateKey !== "string" || !DATE_KEY_PATTERN.test(raw.dateKey)) return null;
   if (typeof raw.dinner_customer_name !== "string") return null;
   if (typeof raw.dinner_adult_count !== "number" || !Number.isInteger(raw.dinner_adult_count)) return null;
@@ -83,7 +77,7 @@ const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | nu
   return {
     id,
     origin: "dinner-system-front",
-    status: raw.status,
+    status,
     dateKey: raw.dateKey,
     dinner_customer_name: raw.dinner_customer_name,
     dinner_adult_count: raw.dinner_adult_count,
@@ -103,20 +97,17 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(request.url);
-  const yearMonth = searchParams.get("yearMonth") ?? "";
+  const dateKey = searchParams.get("dateKey") ?? "";
 
-  if (!YEAR_MONTH_PATTERN.test(yearMonth)) {
-    return NextResponse.json({ rows: [], errors: ["Invalid yearMonth. Expected format: YYYY-MM"] }, { status: 400 });
+  if (!DATE_KEY_PATTERN.test(dateKey)) {
+    return NextResponse.json({ rows: [], errors: ["Invalid dateKey. Expected format: YYYY-MM-DD"] }, { status: 400 });
   }
-
-  const { start, end } = toDateKeyRange(yearMonth);
 
   try {
     const db = getAdminDb();
     const snapshot = await db
       .collection("dinnerReservations")
-      .where("dateKey", ">=", start)
-      .where("dateKey", "<=", end)
+      .where("dateKey", "==", dateKey)
       .orderBy("dateKey", "asc")
       .limit(500)
       .get();
@@ -158,7 +149,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: ["dateKey is required in YYYY-MM-DD format"] }, { status: 400 });
     }
 
-    const status: DinnerItem["status"] = isStatus(body.status) ? body.status : "coming";
+    const status = normalizeStatus(body.status) ?? "coming";
     const customerName = typeof body.dinner_customer_name === "string" ? body.dinner_customer_name : "";
     const adultCount =
       typeof body.dinner_adult_count === "number" && Number.isInteger(body.dinner_adult_count)

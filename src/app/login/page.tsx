@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography, Alert } from "@mui/material";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -13,6 +13,22 @@ const getApiKey = () => {
 };
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginFallback() {
+  return (
+    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
+      <Typography color="text.secondary">Loading...</Typography>
+    </Box>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => {

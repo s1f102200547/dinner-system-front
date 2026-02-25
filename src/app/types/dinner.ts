@@ -1,4 +1,4 @@
-export type DinnerStatus = "coming" | "canceled" | "done";
+export type DinnerStatus = "coming" | "canceled_stay" | "canceled_dinner" | "done";
 export type DinnerOrigin = "dinner-system-front" | "ryokan-system-front";
 
 export type DinnerCreatedBy = "gmail-listener_back" | "dinner_front";
@@ -26,7 +26,7 @@ export type DinnerItem = {
 
 export type DinnerByDate = Record<string, Record<string, DinnerItem>>;
 
-export type GuestInfoV2DinnerTime = string | null;
+export type GuestInfoV2DinnerTime = "PENDING" | "CANCEL" | string | null;
 
 export type GuestInfoV2Reservation = {
   dinner: 1 | 0;

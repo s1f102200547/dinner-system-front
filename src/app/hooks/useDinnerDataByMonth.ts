@@ -7,7 +7,8 @@ type ApiRyokanReservationRow = {
   id: string;
   reservation_number: string;
   origin: "ryokan-system-front";
-  is_canceled: boolean;
+  status: DinnerItem["status"] | "canceled";
+  dinner_time_kind: "scheduled" | "pending" | "canceled_stay" | "canceled_dinner";
   dateKey: string;
   dinner_customer_name: string;
   dinner_adult_count: number;
@@ -19,7 +20,7 @@ type ApiRyokanReservationRow = {
 type ApiDinnerReservationRow = {
   id: string;
   origin: "dinner-system-front";
-  status: DinnerItem["status"];
+  status: DinnerItem["status"] | "canceled";
   dateKey: string;
   dinner_customer_name: string;
   dinner_adult_count: number;
@@ -34,6 +35,15 @@ type ApiDinnerReservationRow = {
 type ApiResponse<T> = {
   rows?: T[];
   errors?: string[];
+};
+
+const normalizeStatus = (status: string): DinnerItem["status"] | null => {
+  if (status === "coming") return "coming";
+  if (status === "done") return "done";
+  if (status === "canceled_stay") return "canceled_stay";
+  if (status === "canceled_dinner") return "canceled_dinner";
+  if (status === "canceled") return "canceled_stay";
+  return null;
 };
 
 const mergeRowsWithDuplicateCheck = (
@@ -60,12 +70,14 @@ const mergeRowsWithDuplicateCheck = (
 const mapRyokanRowToDinnerItem = (row: ApiRyokanReservationRow): DinnerItem | null => {
   const dinnerTime = row.dinner_time === null ? null : new Date(row.dinner_time);
   if (dinnerTime && Number.isNaN(dinnerTime.getTime())) return null;
+  const status = normalizeStatus(row.status);
+  if (!status) return null;
 
   return {
     id: row.id,
     origin: row.origin,
     dateKey: row.dateKey,
-    status: row.is_canceled ? "canceled" : "coming",
+    status,
     dinner_customer_name: row.dinner_customer_name,
     dinner_adult_count: row.dinner_adult_count,
     dinner_child_count: row.dinner_child_count,
@@ -83,12 +95,14 @@ const mapDinnerReservationRowToDinnerItem = (row: ApiDinnerReservationRow): Dinn
   const createdAt = new Date(row.created_at);
   const updatedAt = new Date(row.updated_at);
   if (Number.isNaN(createdAt.getTime()) || Number.isNaN(updatedAt.getTime())) return null;
+  const status = normalizeStatus(row.status);
+  if (!status) return null;
 
   return {
     id: row.id,
     origin: row.origin,
     dateKey: row.dateKey,
-    status: row.status,
+    status,
     dinner_customer_name: row.dinner_customer_name,
     dinner_adult_count: row.dinner_adult_count,
     dinner_child_count: row.dinner_child_count,
@@ -110,7 +124,7 @@ const sortDinnerRows = (items: DinnerItem[]) => {
   });
 };
 
-export function useDinnerDataByMonth(yearMonth: string): {
+export function useDinnerDataByDate(dateKey: string): {
   rows: DinnerItem[];
   loading: boolean;
   errors: string[];
@@ -132,11 +146,11 @@ export function useDinnerDataByMonth(yearMonth: string): {
       setLoading(true);
       try {
         const [ryokanRes, dinnerRes] = await Promise.all([
-          fetch(`/api/reservations?yearMonth=${encodeURIComponent(yearMonth)}`, {
+          fetch(`/api/reservations?dateKey=${encodeURIComponent(dateKey)}`, {
             method: "GET",
             cache: "no-store",
           }),
-          fetch(`/api/dinner-reservations?yearMonth=${encodeURIComponent(yearMonth)}`, {
+          fetch(`/api/dinner-reservations?dateKey=${encodeURIComponent(dateKey)}`, {
             method: "GET",
             cache: "no-store",
           }),
@@ -203,7 +217,7 @@ export function useDinnerDataByMonth(yearMonth: string): {
     return () => {
       isCancelled = true;
     };
-  }, [yearMonth, reloadToken]);
+  }, [dateKey, reloadToken]);
 
   return { rows, loading, errors, refetch };
 }
