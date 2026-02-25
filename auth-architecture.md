@@ -54,12 +54,10 @@ E2Eでは、実装詳細よりも次のユーザー体験と安全性を検証�
   を毎回行っているため
 - Spec: `tests/e2e/auth-guard.spec.ts`
 
-### 6) UID Existence Check
-- Given: `session` がある
+### 6) /api/auth/me Defensive Behavior
+- Given: `session` が無い、または偽造 `session` がある
 - When: `/api/auth/me` を呼ぶ
-- Then:
-  - UID有効なら `200 authenticated:true`
-  - UID不存在/無効化なら `401 authenticated:false`
+- Then: `401 authenticated:false`
 - Spec: `tests/e2e/auth-me.spec.ts`
 
 ## Runtime Roles (for test reading)
@@ -78,9 +76,5 @@ E2Eでは、実装詳細よりも次のユーザー体験と安全性を検証�
 
 ## E2E Mock Safety
 
-E2E用モック分岐は次の条件でのみ有効です。
-
-- `E2E_AUTH_MOCK === "1"`
-- `PLAYWRIGHT_TEST === "1"`
-
-`playwright.config.ts` でのみ有効化し、通常の開発/本番では有効になりません。
+認証の本体コードには E2E 専用バイパス分岐を置かない。  
+必要なモックは Playwright の `page.route` / `context.route` でテスト層に閉じ込める。

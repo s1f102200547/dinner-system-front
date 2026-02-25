@@ -9,34 +9,11 @@ type LoginBody = {
 
 export const runtime = "nodejs";
 
-const isE2EAuthMockEnabled = () => process.env.E2E_AUTH_MOCK === "1";
-const isE2EAuthMockAllowed = () =>
-  isE2EAuthMockEnabled() &&
-  process.env.PLAYWRIGHT_TEST === "1";
-
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as LoginBody;
     if (!body.idToken || typeof body.idToken !== "string") {
       return NextResponse.json({ errors: ["idToken is required"] }, { status: 400 });
-    }
-
-    if (isE2EAuthMockAllowed()) {
-      if (body.idToken !== "e2e.valid.id-token") {
-        return NextResponse.json({ errors: ["Login failed: invalid idToken"] }, { status: 401 });
-      }
-
-      const response = NextResponse.json({ ok: true });
-      response.cookies.set({
-        name: SESSION_COOKIE_NAME,
-        value: "e2e.session.valid-user",
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SESSION_MAX_AGE_SECONDS,
-      });
-      return response;
     }
 
     const adminAuth = getAdminAuth();

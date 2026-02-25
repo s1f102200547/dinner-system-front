@@ -17,11 +17,6 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    env: {
-      ...process.env,
-      PLAYWRIGHT_TEST: "1",
-      E2E_AUTH_MOCK: "1",
-    },
     url: "http://localhost:3000",
     reuseExistingServer: false,
     timeout: 120000,
