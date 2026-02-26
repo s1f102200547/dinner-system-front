@@ -34,6 +34,7 @@ type DinnerReservationRow = {
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T/;
+const HHMM_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const normalizeStatus = (value: unknown): DinnerItem["status"] | null => {
   if (value === "coming" || value === "done" || value === "canceled_stay" || value === "canceled_dinner") {
@@ -56,6 +57,47 @@ const toIso = (value: unknown) => {
   return null;
 };
 
+const toDinnerTime = (value: unknown): string | null => {
+  if (value === null) return null;
+  if (typeof value === "string" && HHMM_PATTERN.test(value)) return value;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Tokyo",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(value);
+  }
+  if (typeof value === "string" && ISO_PATTERN.test(value)) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Tokyo",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(d);
+    }
+  }
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate?: unknown }).toDate === "function"
+  ) {
+    const date = (value as { toDate: () => Date }).toDate();
+    if (date instanceof Date && !Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Tokyo",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(date);
+    }
+  }
+  return null;
+};
+
 const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | null => {
   if (raw.origin !== "dinner-system-front") return null;
   const status = normalizeStatus(raw.status);
@@ -67,8 +109,8 @@ const toRow = (id: string, raw: DinnerReservationDoc): DinnerReservationRow | nu
   if (typeof raw.memo !== "string") return null;
   if (raw.created_by !== "dinner_front") return null;
 
-  const dinnerTime = raw.dinner_time === null ? null : toIso(raw.dinner_time);
-  if (raw.dinner_time !== null && dinnerTime === null) return null;
+  const dinnerTime = toDinnerTime(raw.dinner_time);
+  if (raw.dinner_time !== null && raw.dinner_time !== undefined && dinnerTime === null) return null;
 
   const createdAt = toIso(raw.created_at);
   const updatedAt = toIso(raw.updated_at);
@@ -161,13 +203,12 @@ export async function POST(request: Request) {
         : 0;
     const memo = typeof body.memo === "string" ? body.memo : "";
 
-    let dinnerTimeDate: Date | null = null;
+    let dinnerTime: string | null = null;
     if (typeof body.dinner_time === "string") {
-      const parsed = new Date(body.dinner_time);
-      if (Number.isNaN(parsed.getTime())) {
-        return NextResponse.json({ errors: ["dinner_time must be ISO string or null"] }, { status: 400 });
+      if (!HHMM_PATTERN.test(body.dinner_time)) {
+        return NextResponse.json({ errors: ["dinner_time must be HH:mm string or null"] }, { status: 400 });
       }
-      dinnerTimeDate = parsed;
+      dinnerTime = body.dinner_time;
     }
 
     const now = new Date();
@@ -178,7 +219,7 @@ export async function POST(request: Request) {
       dinner_customer_name: customerName,
       dinner_adult_count: adultCount,
       dinner_child_count: childCount,
-      dinner_time: dinnerTimeDate,
+      dinner_time: dinnerTime,
       memo,
       created_by: "dinner_front" as const,
       created_at: now,
@@ -197,7 +238,7 @@ export async function POST(request: Request) {
       dinner_customer_name: customerName,
       dinner_adult_count: adultCount,
       dinner_child_count: childCount,
-      dinner_time: dinnerTimeDate ? dinnerTimeDate.toISOString() : null,
+      dinner_time: dinnerTime,
       memo,
       created_by: "dinner_front",
       created_at: now.toISOString(),
