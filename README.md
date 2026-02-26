@@ -5,6 +5,8 @@ Next.js (App Router) frontend for dinner reservation operations.
 ## Local development
 
 ```bash
+cp .env.example .env.local
+# edit .env.local
 npm install
 npm run dev
 ```
@@ -16,32 +18,36 @@ This repository is configured for container deployment to Cloud Run.
 ### Quick deploy with Makefile
 
 ```bash
-cp config.mk.example config.mk
-# edit config.mk
+cp .env.production.example .env.production
+# edit .env.production
 make deploy
 ```
 
-Optional variables:
-
-```bash
-make deploy \
-  PROJECT_ID=<your-gcp-project> \
-  REGION=asia-northeast1 \
-  SERVICE=dinner-system-front \
-  FIRESTORE_DATABASE_ID='(default)'
-```
+`Makefile` is configured to require all deploy variables from `.env.production`.
+It also binds Firebase Admin SDK runtime envs via Secret Manager using `--set-secrets`.
 
 ### 1. Required runtime environment variables
 
 Set these on Cloud Run service:
 
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `FIRESTORE_DATABASE_ID`
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
 - `FIREBASE_PRIVATE_KEY`
 
 `firebase-admin` initialization uses ADC first and falls back to the env-based service account values above.
+
+Build-time variable (required in `.env.production` / Makefile):
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+
+### Secret Manager prerequisites
+
+Create these secrets in the target project (or adjust names in `.env.production`):
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 
 ### 2. Build and push image
 
@@ -50,7 +56,9 @@ PROJECT_ID=<your-gcp-project>
 REGION=asia-northeast1
 SERVICE=dinner-system-front
 
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE
+gcloud builds submit \
+  --config cloudbuild.yaml \
+  --substitutions _IMAGE=gcr.io/$PROJECT_ID/$SERVICE,_NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY
 ```
 
 ### 3. Deploy to Cloud Run

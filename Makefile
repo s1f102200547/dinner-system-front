@@ -1,36 +1,66 @@
-ifneq (,$(wildcard config.mk))
-include config.mk
+ifeq (,$(wildcard .env.production))
+ifneq ($(MAKECMDGOALS),help)
+$(error .env.production is required. Run: cp .env.production.example .env.production and fill all values)
+endif
 endif
 
-PROJECT_ID ?=
-REGION ?= asia-northeast1
-SERVICE ?= dinner-system-front
-IMAGE ?= gcr.io/$(PROJECT_ID)/$(SERVICE)
-FIRESTORE_DATABASE_ID ?= (default)
+ifneq (,$(wildcard .env.production))
+include .env.production
+endif
 
-.PHONY: help check-vars build-image deploy logs describe
+IMAGE ?= gcr.io/$(PROJECT_ID)/$(SERVICE)
+BUILD_CONFIG ?= cloudbuild.yaml
+SECRETS_BINDINGS ?= FIREBASE_PROJECT_ID=$(FIREBASE_PROJECT_ID_SECRET),FIREBASE_CLIENT_EMAIL=$(FIREBASE_CLIENT_EMAIL_SECRET),FIREBASE_PRIVATE_KEY=$(FIREBASE_PRIVATE_KEY_SECRET)
+
+.PHONY: help check-vars check-build-vars build-image deploy logs describe
 
 help:
 	@echo "Usage:"
-	@echo "  cp config.mk.example config.mk"
-	@echo "  edit config.mk"
+	@echo "  cp .env.production.example .env.production"
+	@echo "  edit .env.production"
 	@echo "  make deploy"
-	@echo "Override examples:"
-	@echo "  make deploy PROJECT_ID=<gcp-project-id>"
-	@echo "Variables:"
-	@echo "  PROJECT_ID            GCP project id (required, from config.mk or CLI)"
-	@echo "  REGION                Cloud Run region (default: asia-northeast1)"
-	@echo "  SERVICE               Cloud Run service name (default: dinner-system-front)"
-	@echo "  FIRESTORE_DATABASE_ID Runtime env for Firestore DB (default: (default))"
+	@echo "All required values must be set in .env.production."
 
 check-vars:
 	@if [ -z "$(PROJECT_ID)" ]; then \
-		echo "ERROR: PROJECT_ID is required. Example: make deploy PROJECT_ID=my-project"; \
+		echo "ERROR: PROJECT_ID is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(REGION)" ]; then \
+		echo "ERROR: REGION is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "ERROR: SERVICE is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FIRESTORE_DATABASE_ID)" ]; then \
+		echo "ERROR: FIRESTORE_DATABASE_ID is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FIREBASE_PROJECT_ID_SECRET)" ]; then \
+		echo "ERROR: FIREBASE_PROJECT_ID_SECRET is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FIREBASE_CLIENT_EMAIL_SECRET)" ]; then \
+		echo "ERROR: FIREBASE_CLIENT_EMAIL_SECRET is required in .env.production"; \
+		exit 1; \
+	fi
+	@if [ -z "$(FIREBASE_PRIVATE_KEY_SECRET)" ]; then \
+		echo "ERROR: FIREBASE_PRIVATE_KEY_SECRET is required in .env.production"; \
 		exit 1; \
 	fi
 
-build-image: check-vars
-	gcloud builds submit --tag $(IMAGE)
+check-build-vars:
+	@if [ -z "$(NEXT_PUBLIC_FIREBASE_API_KEY)" ]; then \
+		echo "ERROR: NEXT_PUBLIC_FIREBASE_API_KEY is required in .env.production."; \
+		exit 1; \
+	fi
+
+build-image: check-vars check-build-vars
+	gcloud builds submit \
+		--config $(BUILD_CONFIG) \
+		--substitutions _IMAGE=$(IMAGE),_NEXT_PUBLIC_FIREBASE_API_KEY=$(NEXT_PUBLIC_FIREBASE_API_KEY)
 
 deploy: build-image
 	gcloud run deploy $(SERVICE) \
@@ -39,7 +69,8 @@ deploy: build-image
 		--region $(REGION) \
 		--platform managed \
 		--allow-unauthenticated \
-		--set-env-vars FIRESTORE_DATABASE_ID='$(FIRESTORE_DATABASE_ID)'
+		--set-env-vars FIRESTORE_DATABASE_ID='$(FIRESTORE_DATABASE_ID)' \
+		--set-secrets $(SECRETS_BINDINGS)
 
 logs: check-vars
 	gcloud run services logs read $(SERVICE) \

@@ -8,6 +8,9 @@ RUN npm ci
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ENV NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+RUN test -n "$NEXT_PUBLIC_FIREBASE_API_KEY"
 RUN npm run build
 RUN mkdir -p public
 
