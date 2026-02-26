@@ -342,7 +342,7 @@ const DinnerPage = () => {
                   >
                     <Box
                       sx={{
-                        width: { xs: 72, sm: 88 },
+                        width: 72,
                         flexShrink: 0,
                         display: "flex",
                         alignItems: "center",
@@ -361,8 +361,12 @@ const DinnerPage = () => {
                           variant="outlined"
                           sx={{
                             p: 1.5,
-                            width: { xs: "100%", sm: "24%" },
-                            flex: { xs: "1 1 100%", sm: "0 0 24%" },
+                            width: { xs: "100%", sm: "calc((100% - 8px) / 2)", md: "calc((100% - 16px) / 3)" },
+                            flex: {
+                              xs: "1 1 100%",
+                              sm: "0 0 calc((100% - 8px) / 2)",
+                              md: "0 0 calc((100% - 16px) / 3)",
+                            },
                             minWidth: 0,
                           }}
                           ref={editingId === row.id ? editingCardRef : null}
