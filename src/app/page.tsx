@@ -81,31 +81,19 @@ const formatDayLabel = (dateStr: string | null | undefined) => {
   return `${month}/${day} (${weekDay})`;
 };
 
-const toTimeLabel = (value: Date | null) => {
+const toTimeLabel = (value: string | null) => {
   if (!value) return "未定";
-  const hour = String(value.getHours()).padStart(2, "0");
-  const minute = String(value.getMinutes()).padStart(2, "0");
-  return `${hour}:${minute}`;
+  return value;
 };
 
-const toTimeValue = (value: Date | null) => {
+const toTimeValue = (value: string | null) => {
   if (!value) return "";
-  const hour = String(value.getHours()).padStart(2, "0");
-  const minute = String(value.getMinutes()).padStart(2, "0");
-  return `${hour}:${minute}`;
+  return value;
 };
 
-const toDateFromTime = (dateKey: string, hhmm: string) => {
+const toDinnerTime = (hhmm: string) => {
   if (!hhmm) return null;
-  const [yearStr, monthStr, dayStr] = dateKey.split("-");
-  const [hourStr, minuteStr] = hhmm.split(":");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
-  const hour = Number(hourStr);
-  const minute = Number(minuteStr);
-  if (![year, month, day, hour, minute].every((v) => Number.isFinite(v))) return null;
-  return new Date(year, month - 1, day, hour, minute, 0, 0);
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(hhmm) ? hhmm : null;
 };
 
 const compactTextFieldSx = {
@@ -242,8 +230,8 @@ const DinnerPage = () => {
           dinner_child_count: editingDraft.dinner_child_count ?? target.dinner_child_count,
           dinner_time:
             editingDraft.dinner_time === undefined
-              ? (target.dinner_time ? target.dinner_time.toISOString() : null)
-              : (editingDraft.dinner_time ? editingDraft.dinner_time.toISOString() : null),
+              ? target.dinner_time
+              : editingDraft.dinner_time,
           memo: editingDraft.memo ?? target.memo,
         }),
       });
@@ -301,9 +289,9 @@ const DinnerPage = () => {
       ) : (
         (() => {
           const sorted = [...dayRows].sort((a, b) => {
-            const at = a.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
-            const bt = b.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
-            return at - bt;
+            const at = a.dinner_time ?? "99:99";
+            const bt = b.dinner_time ?? "99:99";
+            return at.localeCompare(bt);
           });
           const groupedByTime = new Map<string, DinnerItem[]>();
           sorted.forEach((row) => {
@@ -450,7 +438,7 @@ const DinnerPage = () => {
                                 onChange={(e) =>
                                   setEditingDraft((prev) => ({
                                     ...(prev ?? {}),
-                                    dinner_time: toDateFromTime(row.dateKey, e.target.value),
+                                    dinner_time: toDinnerTime(e.target.value),
                                   }))
                                 }
                                 InputLabelProps={{ shrink: true }}

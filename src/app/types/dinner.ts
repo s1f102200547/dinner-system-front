@@ -16,7 +16,7 @@ export type DinnerItem = {
   dinner_customer_name: string;
   dinner_adult_count: number;
   dinner_child_count: number;
-  dinner_time: Date | null;
+  dinner_time: string | null; // HH:mm | null
   items?: DinnerOrderItem[];
   memo: string;
   created_by: DinnerCreatedBy;

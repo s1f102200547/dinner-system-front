@@ -61,14 +61,6 @@ const toSlashDate = (year: number, month: number, day: number) => {
   return `${year}/${mm}/${dd}`;
 };
 
-const toIsoDateTime = (date: Date, hhmm: string) => {
-  const [hourStr, minuteStr] = hhmm.split(":");
-  const hour = Number(hourStr);
-  const minute = Number(minuteStr);
-  if (![hour, minute].every((n) => Number.isFinite(n))) return null;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute, 0, 0).toISOString();
-};
-
 const getErrorLabel = (raw: GuestInfoV2ReservationRaw, dateText?: string) => {
   const name = typeof raw.guest_name === "string" && raw.guest_name.trim().length > 0
     ? raw.guest_name
@@ -241,8 +233,7 @@ export async function GET(request: Request) {
           dinnerTimeKind = "pending";
         } else {
           dinnerTimeKind = "scheduled";
-          dinnerTime = toIsoDateTime(stayDate, timeValue);
-          if (!dinnerTime) continue;
+          dinnerTime = timeValue;
         }
 
         rows.push({

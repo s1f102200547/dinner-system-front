@@ -23,6 +23,7 @@ const isStatus = (value: unknown): value is DinnerItem["status"] | "canceled" =>
 };
 
 export const runtime = "nodejs";
+const HHMM_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export async function PATCH(
   request: Request,
@@ -79,11 +80,10 @@ export async function PATCH(
       if (body.dinner_time === null) {
         patch.dinner_time = null;
       } else if (typeof body.dinner_time === "string") {
-        const parsed = new Date(body.dinner_time);
-        if (Number.isNaN(parsed.getTime())) {
+        if (!HHMM_PATTERN.test(body.dinner_time)) {
           return NextResponse.json({ errors: ["Invalid dinner_time"] }, { status: 400 });
         }
-        patch.dinner_time = parsed;
+        patch.dinner_time = body.dinner_time;
       } else {
         return NextResponse.json({ errors: ["Invalid dinner_time"] }, { status: 400 });
       }

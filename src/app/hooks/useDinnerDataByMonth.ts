@@ -68,8 +68,8 @@ const mergeRowsWithDuplicateCheck = (
 };
 
 const mapRyokanRowToDinnerItem = (row: ApiRyokanReservationRow): DinnerItem | null => {
-  const dinnerTime = row.dinner_time === null ? null : new Date(row.dinner_time);
-  if (dinnerTime && Number.isNaN(dinnerTime.getTime())) return null;
+  const dinnerTime = row.dinner_time;
+  if (dinnerTime !== null && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(dinnerTime)) return null;
   const status = normalizeStatus(row.status);
   if (!status) return null;
 
@@ -90,8 +90,8 @@ const mapRyokanRowToDinnerItem = (row: ApiRyokanReservationRow): DinnerItem | nu
 };
 
 const mapDinnerReservationRowToDinnerItem = (row: ApiDinnerReservationRow): DinnerItem | null => {
-  const dinnerTime = row.dinner_time === null ? null : new Date(row.dinner_time);
-  if (dinnerTime && Number.isNaN(dinnerTime.getTime())) return null;
+  const dinnerTime = row.dinner_time;
+  if (dinnerTime !== null && !/^([01]\d|2[0-3]):([0-5]\d)$/.test(dinnerTime)) return null;
   const createdAt = new Date(row.created_at);
   const updatedAt = new Date(row.updated_at);
   if (Number.isNaN(createdAt.getTime()) || Number.isNaN(updatedAt.getTime())) return null;
@@ -117,9 +117,9 @@ const mapDinnerReservationRowToDinnerItem = (row: ApiDinnerReservationRow): Dinn
 const sortDinnerRows = (items: DinnerItem[]) => {
   return [...items].sort((a, b) => {
     if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
-    const at = a.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
-    const bt = b.dinner_time?.getTime() ?? Number.POSITIVE_INFINITY;
-    if (at !== bt) return at - bt;
+    const at = a.dinner_time ?? "99:99";
+    const bt = b.dinner_time ?? "99:99";
+    if (at !== bt) return at.localeCompare(bt);
     return a.id.localeCompare(b.id);
   });
 };
