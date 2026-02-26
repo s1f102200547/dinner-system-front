@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# dinner-system-front
 
-## Getting Started
+Next.js (App Router) frontend for dinner reservation operations.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cloud Run deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This repository is configured for container deployment to Cloud Run.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Quick deploy with Makefile
 
-## Learn More
+```bash
+cp config.mk.example config.mk
+# edit config.mk
+make deploy
+```
 
-To learn more about Next.js, take a look at the following resources:
+Optional variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+make deploy \
+  PROJECT_ID=<your-gcp-project> \
+  REGION=asia-northeast1 \
+  SERVICE=dinner-system-front \
+  FIRESTORE_DATABASE_ID='(default)'
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. Required runtime environment variables
 
-## Deploy on Vercel
+Set these on Cloud Run service:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `FIRESTORE_DATABASE_ID`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`firebase-admin` initialization uses ADC first and falls back to the env-based service account values above.
+
+### 2. Build and push image
+
+```bash
+PROJECT_ID=<your-gcp-project>
+REGION=asia-northeast1
+SERVICE=dinner-system-front
+
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE
+```
+
+### 3. Deploy to Cloud Run
+
+```bash
+gcloud run deploy $SERVICE \
+  --image gcr.io/$PROJECT_ID/$SERVICE \
+  --region $REGION \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars FIRESTORE_DATABASE_ID=(default)
+```
+
+Add secret/environment bindings in Cloud Run for Firebase credentials and API key.
+
+## Container notes
+
+- `next.config.ts` uses `output: "standalone"`
+- `Dockerfile` starts the app with `node server.js` on `PORT=8080`
